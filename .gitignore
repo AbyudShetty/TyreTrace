@@ -1,0 +1,9 @@
+cache/
+out/
+__pycache__/
+*.pyc
+.venv/
+*.parquet
+TYRE_TRACE_TrackShift_Idea_Submission.pdf
+.pytest_cache/
+repomix-output.md

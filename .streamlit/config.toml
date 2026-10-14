@@ -1,0 +1,9 @@
+[theme]
+primaryColor = "#E10600"
+
+[server]
+headless = true
+address = "localhost"
+
+[browser]
+gatherUsageStats = false
