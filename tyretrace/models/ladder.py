@@ -580,3 +580,125 @@ def model_l5(d: Design, y=None):
 
 
 MODELS["L5"] = model_l5
+
+
+# --------------------------------------------------------------------------
+# L6 -- compromised laps: a one-sided slow component, likelier on old tyres
+# --------------------------------------------------------------------------
+
+def _l4_mean(d: Design):
+    """L4's mean function, unchanged: circuit level, within-circuit stint
+    offsets, the identified fuel/track split, wake and per-weekend degradation.
+    Shared so a rung that only changes the noise model cannot drift the mean."""
+    circ = numpyro.sample(
+        "circuit_pace",
+        dist.Normal(90.0, 25.0).expand([d.n_circuit]).to_event(1))
+
+    sd_stint = numpyro.sample("sd_stint", dist.HalfNormal(0.5))
+    z_raw = numpyro.sample(
+        "z_stint", dist.Normal(0, 1).expand([d.n_stint]).to_event(1))
+    csum = jnp.zeros(d.n_circuit).at[d.stint_circuit].add(z_raw)
+    ccount = jnp.zeros(d.n_circuit).at[d.stint_circuit].add(1.0)
+    z_stint = z_raw - (csum / jnp.maximum(ccount, 1.0))[d.stint_circuit]
+    stint_off = numpyro.deterministic("stint_off", sd_stint * z_stint)
+
+    beta_f = numpyro.sample("beta_f", dist.Normal(0.033, 0.020))
+    s = numpyro.sample("tau_scale", dist.Normal(0.5, 0.5))
+    lap_coef = numpyro.deterministic(
+        "lap_coef_row", -(beta_f * d.kappa + s * d.tau_quali))
+
+    wake = numpyro.sample("wake_s", dist.Normal(0.5, 0.5))
+    deg = numpyro.sample(
+        "deg",
+        dist.Normal(0.05, 0.08).expand([d.n_weekend, d.n_compound]).to_event(2))
+
+    return (circ[d.circuit] + stint_off[d.stint]
+            + lap_coef * d.lap
+            + wake * d.dirty_air
+            + deg[d.weekend, d.compound] * d.age)
+
+
+SLOW_AGE_CENTRE = 15.0      # p_slow_a is the log-odds of a slow lap at this age
+SLOW_AGE_SCALE = 10.0       # p_slow_b is the change in log-odds per 10 laps
+
+
+def model_l6(d: Design, y=None):
+    """REJECTED. Kept as a recorded negative result, not a shipping rung.
+
+    Verdict, on L4's split, 400 draws x 2 chains, three variants declared
+    before any were scored (all reported, not just the best):
+
+        variant                       CRPS    cov90   slow miss  fast miss
+        L4 (reference, same draws)    0.3454  0.812   11.8%      7.1%
+        A  t clean + Normal slow      0.3477  0.763   12.5%     11.2%
+        B  Normal clean + t slow      0.3465  0.755   11.7%     12.8%
+        C  Normal clean + Normal slow 0.3460  0.760   11.7%     12.4%
+
+    Every variant covers WORSE than L4. The mixture let the clean component
+    tighten (sigma 0.224-0.236 vs 0.239), which created fast-side misses,
+    while the slow side did not improve. And the age effect on the share of
+    compromised laps came out NEGATIVE (p_slow_b -0.8 to -1.9) -- fewer
+    compromised laps on old tyres, the opposite of the hypothesis. So the
+    one-sided misses on old tyres are not a lap-level contamination process.
+
+    What is left: the misses are lopsided by tyre age while the median stays
+    near zero, which points at the MEAN on old tyres (degradation curvature or
+    a cliff within some stints) rather than at the noise. That is a regime
+    question, and also the place to look once the convergence problem below
+    is fixed -- r_hat was 1.27-1.39 for every variant AND for L4 at this draw
+    count, so these comparisons are between unconverged fits.
+
+    ---- original rationale, preserved ----
+
+    L4's mean, with a noise model that can be slow but not fast.
+
+    L4's held-out misses are ONE-SIDED. Split by which side of the 90% band a
+    missed lap falls on:
+
+        age   1-5    above q95  7.7%   below q05  7.0%
+        age 11-15    above q95  9.5%   below q05  6.6%
+        age 26-30    above q95 16.1%   below q05  6.8%
+
+    Calibrated would be 5% each side. The fast side is roughly right at every
+    age; the slow side is wrong and gets worse with tyre age, while the median
+    forecast stays within 0.1 s. A Student-t is symmetric, so it cannot fit
+    that -- widening it to catch the slow laps would over-cover the fast side.
+
+    Physically there are two kinds of lap. A CLEAN lap is the driver on the
+    car's pace. A COMPROMISED lap -- stuck behind traffic the wake term does
+    not capture, a lock-up, a lift, a tyre starting to go -- is slower, never
+    faster. So: a two-component mixture,
+
+        clean        StudentT(nu, mean, sigma)                 prob 1 - p
+        compromised  Normal(mean + slow_s, sigma + sigma_slow)  prob p
+
+    with slow_s > 0 and the compromised component strictly wider, which also
+    pins the labels so the components cannot swap. p depends on tyre age
+    through a logistic, so a rising share of compromised laps on old tyres --
+    a cliff precursor -- is something the model can find, not something it
+    assumes: p_slow_b ~ Normal(0, 1) is centred on no age effect.
+
+    This is the regime model's simplest special case: two states, independent
+    across laps. If it calibrates, the HMM has to beat it rather than L4.
+    """
+    mean = _l4_mean(d)
+
+    sigma = numpyro.sample("sigma", dist.HalfNormal(1.0))
+    nu = numpyro.deterministic("nu", 2.0 + numpyro.sample("nu_raw",
+                                                          dist.Gamma(2.0, 0.2)))
+
+    slow = numpyro.sample("slow_s", dist.HalfNormal(2.0))
+    sigma_slow = numpyro.sample("sigma_slow", dist.HalfNormal(2.0))
+    # prior centred on ~8% compromised laps at age 15, wide on the log-odds
+    a = numpyro.sample("p_slow_a", dist.Normal(-2.5, 1.0))
+    b = numpyro.sample("p_slow_b", dist.Normal(0.0, 1.0))
+    p = jax.nn.sigmoid(a + b * (d.age - SLOW_AGE_CENTRE) / SLOW_AGE_SCALE)
+
+    mix = dist.MixtureGeneral(
+        dist.Categorical(probs=jnp.stack([1.0 - p, p], axis=-1)),
+        [dist.StudentT(nu, mean, sigma),
+         dist.Normal(mean + slow, sigma + sigma_slow)])
+    numpyro.sample("obs", mix, obs=y)
+
+
+MODELS["L6"] = model_l6

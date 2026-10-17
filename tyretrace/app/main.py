@@ -38,6 +38,9 @@ nav = st.navigation({
         page("predictions", "Held-out predictions", "🎯"),
         page("compounds", "Compound contrasts", "⚖️"),
     ],
+    "Decide": [
+        page("planner", "Run planner", "🧭"),
+    ],
     "Ground truth": [
         page("rig", "Game rig", "🎮"),
     ],

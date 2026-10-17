@@ -17,6 +17,9 @@ st.markdown(
 pred = data.artifact("l4", "predictive")
 if not data.need(pred, "l4", "held-out predictions"):
     st.stop()
+base = data.artifact("baselines", "predictive")
+if base is not None:              # same laps, same columns -- protocol baselines
+    pred = pl.concat([pred, base.select(pred.columns)])
 
 pred = pred.with_columns(
     ((pl.col("y") >= pl.col("q05")) & (pl.col("y") <= pl.col("q95"))).alias("in90"),
@@ -87,7 +90,8 @@ for r in rungs:
     lookup = dict(zip(t["age_bin"].to_list(), t["cov"].to_list()))
     fig.add_trace(go.Scatter(x=names, y=[lookup.get(n) for n in names],
                              mode="lines+markers", name=r,
-                             line=dict(color=style.RUNG.get(r), width=2.5)))
+                             line=dict(color=style.RUNG.get(r, style.BASELINE), width=2.5,
+                                       dash="dot" if r.startswith("B") else "solid")))
 fig.update_xaxes(title="tyre age (laps)")
 fig.update_yaxes(title="90% coverage", range=[0.6, 1.0])
 fig.update_layout(title="Coverage by tyre age")
@@ -123,7 +127,7 @@ sd = float(np.std(r_))
 xs = np.linspace(-4 * sd, 4 * sd, 200)
 fig = go.Figure()
 fig.add_trace(go.Histogram(x=r_, histnorm="probability density", nbinsx=120,
-                           marker_color=style.RUNG.get(rung), name="actual − median"))
+                           marker_color=style.RUNG.get(rung, style.BASELINE), name="actual − median"))
 fig.add_trace(go.Scatter(x=xs, y=np.exp(-0.5 * (xs / sd) ** 2) / (sd * np.sqrt(2 * np.pi)),
                          mode="lines", line=dict(color="black", dash="dash"),
                          name="Gaussian, same SD"))

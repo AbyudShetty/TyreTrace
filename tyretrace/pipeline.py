@@ -98,6 +98,10 @@ TASKS: dict[str, Task] = {t.name: t for t in [
          expect="HOLD",
          expect_why="L4 has the best CRPS but covers 0.813; L5 rejected, "
                     "sigma(age) is U-shaped not monotone"),
+
+    Task("baselines", "audit/b1_baselines.py",
+         "Protocol baselines (naive, conventional, GBM) on the ladder's split",
+         deps=("l4",), inputs=("out/audit_race.parquet",), minutes=1.5),
 ]}
 
 # everything runnable without touching the network

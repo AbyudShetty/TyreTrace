@@ -24,6 +24,13 @@ ADDS = {
 }
 REAL = ["L2", "L3", "L4", "L5"]
 
+def _rhat(rung: str) -> str:
+    v = data.metric("l4", f"rhat_{rung.lower()}")
+    if v is None:
+        return "—"
+    return f"{v:.3f}" + (" ⚠️" if v > 1.05 else "")
+
+
 # --------------------------------------------------------------------------
 # gate table
 # --------------------------------------------------------------------------
@@ -39,13 +46,16 @@ for r in REAL:
     rows.append({"rung": r, "adds": ADDS[r], "CRPS": round(crps, 4),
                  "MAE": round(data.metric("l4", f"mae_{r.lower()}", float("nan")), 4),
                  "cov90": round(cov, 3),
+                 "r_hat": _rhat(r),
                  "gate": ("🟢 SHIP" if ok else "🟡 HOLD") if r != "L5" else "🔴 REJECTED",
                  "why": why})
     base = sc
 if rows:
     st.dataframe(pl.DataFrame(rows).to_pandas(), hide_index=True)
     st.caption("Real races, same held-out laps for every rung: the last 30% of each "
-               "race, so the models extrapolate forward through fuel burn and tyre wear.")
+               "race, so the models extrapolate forward through fuel burn and tyre wear. "
+               "r_hat above 1.05 (⚠️) means the sampler's chains disagree, so that "
+               "rung's scores are provisional.")
 else:
     data.need(None, "l4", "the ladder")
 
@@ -80,17 +90,26 @@ def cal_fig(df: pl.DataFrame, rungs, title: str) -> go.Figure:
     for r in rungs:
         g = df.filter(pl.col("rung") == r).sort("level")
         if g.height:
+            is_base = r.startswith("B")
             fig.add_trace(go.Scatter(x=g["level"].to_list(), y=g["coverage"].to_list(),
-                                     mode="lines+markers", name=r,
-                                     line=dict(color=style.RUNG[r], width=2.5)))
+                                     mode="lines" if is_base else "lines+markers", name=r,
+                                     line=dict(color=style.RUNG.get(r, style.BASELINE),
+                                               width=1.5 if is_base else 2.5,
+                                               dash="dot" if is_base else "solid")))
     fig.update_xaxes(title="nominal interval level", range=[0, 1])
     fig.update_yaxes(title="share of held-out laps inside", range=[0, 1])
     fig.update_layout(title=title)
     return style.tidy(fig, height=420)
 
 
+base_cal = data.artifact("baselines", "calibration")
 if data.need(cal, "l4", "real-race calibration curves"):
-    a.plotly_chart(cal_fig(cal, REAL, "Real races (L2–L5)"))
+    shown, extra = cal, []
+    if base_cal is not None:
+        shown = pl.concat([cal, base_cal.select(cal.columns)])
+        extra = sorted(base_cal["rung"].unique().to_list())
+    a.plotly_chart(cal_fig(shown, REAL + extra,
+                           "Real races (L2–L5; dotted = baselines B1–B3)"))
 if twin_cal is not None:
     b.plotly_chart(cal_fig(twin_cal, ["L0", "L1"], "Synthetic twin (L0–L1)"))
 else:
@@ -106,7 +125,10 @@ if data.need(post, "l4", "posterior draws"):
     PARAMS = {
         "fuel_pace": ("Fuel pace (s/lap)", style.PHYSICS_FUEL,
                       "Shaded: what fuel physics implies. The gap is the project's "
-                      "biggest open question."),
+                      "biggest open question. Trust **L2** here: in L3–L5 the fuel "
+                      "coefficient trades off against per-stint offsets and mixes "
+                      "poorly (effective sample size ~25), so their fuel estimates "
+                      "are provisional even though their forecasts are stable."),
         "tau_scale": ("Race / quali track-evolution scale s", None,
                       "s < 1: the race track evolves less than in qualifying."),
         "wake_s": ("Dirty-air cost in full wake (s/lap)", None,

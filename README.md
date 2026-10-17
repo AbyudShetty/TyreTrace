@@ -47,7 +47,8 @@ tyretrace/
   results.py     headline numbers -> out/results.json
   artifacts.py   per-lap predictions, calibration curves, posteriors -> out/artifacts/
   app/           Streamlit dashboard — reads out/, never fits a model
-  infer/ planner/                                (empty — later phases)
+  planner/       eig.py — FP2 run planner, exact expected information gain
+  infer/                                         (empty — later phases)
 audit/           Phase 0 scripts. Each prints a PASS/FAIL gate.
 eval/protocol.md pre-registered metrics, splits, baselines. Frozen.
 tests/           recovery tests — simulate, fit, assert truth comes back
@@ -145,6 +146,8 @@ HMM at L4.
 | L3 dirty air | ship gate vs L2 | **HOLD** — CRPS −4.1% but coverage 0.849 |
 | L4 calibration | stint offsets + heavy tails | **HOLD** — best CRPS 0.344, coverage 0.813 |
 | L5 variance model | non-constant sigma | **REJECTED** — wrong functional form |
+| L6 compromised laps | one-sided noise mixture | **REJECTED** — all 3 variants cover worse (0.76) |
+| Baselines (§4) | best rung beats every baseline | **PASS** (3 of 4 built) — but see caveat below |
 
 ### What the audit changed
 
@@ -323,6 +326,65 @@ That is **U-shaped**, not monotone. A log-linear scale can only rise or fall, so
 the large early drop and gave old tyres narrower intervals — worsening the problem it was
 built to fix. The next attempt is a non-monotone scale or the regime model, where warm-up
 and cliff are distinct states with their own variances.
+
+### Baselines, L6, and a convergence warning
+
+**Baselines** (`tyretrace/models/baselines.py`, `audit/b1_baselines.py`), scored on
+the ladder's own held-out laps:
+
+| | CRPS | cov90 |
+|---|---|---|
+| B1 naive — a line per stint | 0.785 | 0.41 |
+| B3 gradient boosting | 0.397 | 0.79 |
+| L2 | 0.381 | 0.84 |
+| **B2 conventional — assumed 0.030 s/kg** | **0.371** | 0.79 |
+| L4 | 0.344 | 0.81 |
+
+L4 beats all three, but **the conventional fuel correction beats L2**. That is
+not a contradiction. Forecasting the rest of the *same* race needs only the fused
+slope, and a free degradation curve absorbs a wrong fuel assumption. What the
+wrong assumption corrupts is the *reported degradation*: `tests/test_baselines.py`
+shows a 0.015 s/kg fuel error leaving the fit almost untouched while the reported
+degradation moves from 0.060 to 0.089 on one set and **−0.021** on the next. So this
+comparison measures forecasting skill, not the split. The FP → race backtest is
+where the split gets tested.
+
+**L6 is a recorded negative result.** L4's held-out misses are one-sided (12% of
+laps slower than its 95th percentile, 7% faster than its 5th), worst on old tyres.
+A clean/compromised-lap mixture, with compromised laps allowed to become likelier
+with tyre age, was tried in three pre-declared variants. All covered *worse*
+(0.755–0.763 vs 0.812), and the age effect came out negative. So the lopsided misses
+are not lap-level noise. The next suspect is the mean on old tyres (curvature or a
+cliff), which is the regime model's job.
+
+**L3–L5 do not fully converge.** r_hat is 1.05–1.10 with ESS ~25 on `beta_f`, the
+stint offsets and degradation. Centring lap number within circuit was tried and did
+not help. It is the stint-offset vs fuel trade-off described under L4. Forecasts
+are stable across reruns (coverage 0.812 / 0.813 / 0.813), so the ship-gate verdicts
+stand; **fuel estimates from L3+ are not reliable — quote L2's** (r_hat 1.007). The
+L4 audit now reports each rung's r_hat and flags unconverged fits.
+
+### The run planner
+
+`tyretrace/planner/eig.py` and the dashboard's **Run planner** page: which FP2 runs
+would teach the most about degradation? Laps follow a linear-Gaussian model from the
+team's side of the wall (fuel known, a free intercept per run), so expected
+information gain is **exact**: no Monte Carlo. It's checked against brute-force
+simulation, and the optimiser against exhaustive search.
+
+Within a run, fuel, tyre age and track all move in lock step, so a run only reveals
+their fused slope. The one move that breaks it is a **tyre change without refuelling**.
+On equal session time, with the qualifying simulation kept in both programmes:
+
+| | vs a typical FP2 |
+|---|---|
+| tyre changes not allowed | **+0%**: the planner rediscovers the standard programme |
+| tyre changes allowed | **+21%**: one 20-lap run, medium → hard at half distance |
+
+Two optimiser bugs were found by making the comparison fair. Rate-greedy alone lost by
+8%, and greedy plus local search lost by 10%. Both are fixed by a beam search, with
+regression tests. v1 assumes linear degradation (no cliff), one car and no tyre
+allocation limit.
 
 ### What the earlier L1 fit says
 

@@ -64,22 +64,33 @@ rungs = ["L2", "L3", "L4", "L5"]
 crps = [data.metric("l4", f"crps_{r.lower()}") for r in rungs]
 cov = [data.metric("l4", f"cov90_{r.lower()}") for r in rungs]
 
+# protocol section 4 baselines, scored on the same held-out laps
+BASE = {"B1": "naive", "B2": "conventional", "B3": "boosting"}
+base = [(f"{k} {v}", data.metric("baselines", f"crps_{k.lower()}"),
+         data.metric("baselines", f"cov90_{k.lower()}")) for k, v in BASE.items()]
+base = [b for b in base if b[1] is not None]
+
 if all(v is not None for v in crps + cov):
     a, b = st.columns(2)
-    fig = go.Figure(go.Bar(x=rungs, y=crps, marker_color=[style.RUNG[r] for r in rungs],
-                           text=[f"{v:.3f}" for v in crps], textposition="outside"))
-    fig.update_yaxes(title="held-out CRPS (s)", range=[0, max(crps) * 1.2])
-    fig.update_layout(title="Accuracy of the whole forecast")
+    names = rungs + [n for n, _, _ in base]
+    allc = crps + [c for _, c, _ in base]
+    allv = cov + [v for _, _, v in base]
+    colors = [style.RUNG[r] for r in rungs] + [style.BASELINE] * len(base)
+
+    fig = go.Figure(go.Bar(x=names, y=allc, marker_color=colors,
+                           text=[f"{v:.3f}" for v in allc], textposition="outside"))
+    fig.update_yaxes(title="held-out CRPS (s)", range=[0, max(allc) * 1.2])
+    fig.update_layout(title="Accuracy of the whole forecast (grey = baselines)")
     a.plotly_chart(style.tidy(fig, height=340, legend=False))
 
     fig = go.Figure()
     fig.add_hrect(y0=style.BAND[0], y1=style.BAND[1], fillcolor=style.BAND_FILL,
                   line_width=0, annotation_text="ship band",
                   annotation_position="top left")
-    fig.add_trace(go.Scatter(x=rungs, y=cov, mode="markers+text",
-                             marker=dict(size=16, color=[style.RUNG[r] for r in rungs]),
-                             text=[f"{v:.3f}" for v in cov], textposition="middle right"))
-    fig.update_yaxes(title="90% interval coverage", range=[0.7, 1.0])
+    fig.add_trace(go.Scatter(x=names, y=allv, mode="markers+text",
+                             marker=dict(size=16, color=colors),
+                             text=[f"{v:.3f}" for v in allv], textposition="middle right"))
+    fig.update_yaxes(title="90% interval coverage", range=[0.3, 1.0])
     fig.update_layout(title="Are the 90% intervals honest?")
     b.plotly_chart(style.tidy(fig, height=340, legend=False))
 
@@ -88,6 +99,12 @@ if all(v is not None for v in crps + cov):
         f"**Verdict:** {best} has the best CRPS, but no rung's intervals are "
         "wide enough yet, so nothing ships. Too-narrow intervals are the open "
         "problem. See *Held-out predictions* for where they miss.")
+    if base:
+        st.caption(
+            "Baselines: forecasting the rest of the *same* race only needs the fused "
+            "slope, so the conventional fuel-correction (an assumed 0.030 s/kg) "
+            "forecasts nearly as well. It reports the wrong *degradation* when its fuel "
+            "assumption is wrong, and this test can't see that. The FP → race backtest can.")
 else:
     data.need(None, "l4", "the real-race ladder")
 

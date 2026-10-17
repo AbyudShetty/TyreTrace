@@ -34,6 +34,7 @@ from tyretrace.models import ladder  # noqa: E402
 
 RULE = "-" * 76
 RUNGS = ("L2", "L3", "L4", "L5")
+RHAT_MAX = 1.05
 SCALARS = ("beta_f", "tau_scale", "wake_s", "sigma", "sigma0", "gamma_age",
            "nu", "sd_stint")
 
@@ -77,7 +78,7 @@ def main() -> int:
     print("   -> those fall back to the population prior, widening honestly")
     print()
 
-    fits, scores = {}, {}
+    fits, scores, rhats = {}, {}, {}
     pred_tabs, cal_tabs, post_tabs = [], [], []
     labels = lap_labels(d_te)
     kbar = float(np.mean(d_tr.kappa))
@@ -88,6 +89,7 @@ def main() -> int:
         pp = ladder.predict(rung, mcmc, d_te)
         scores[rung] = metrics.score(pp, d_te.y)
         fits[rung] = mcmc
+        rhats[rung] = diag["max_rhat"]
 
         # for the dashboard: every rung on the same held-out laps
         pred_tabs.append(artifacts.predictive(pp, d_te.y, **labels)
@@ -102,6 +104,17 @@ def main() -> int:
         print(f"   {rung} fitted in {time.time()-t0:>4.0f}s   "
               f"r_hat {diag['max_rhat']:.4f}   div {diag['divergences']}")
     print()
+
+    # A score from chains that disagree is not a score of the model -- it is a
+    # score of wherever the sampler happened to be. Measured: L3-L5 sat at
+    # r_hat 1.05-1.07 at 800 draws and ~1.3 at 400, so the gate below was
+    # comparing unconverged fits. Report it loudly rather than gate silently.
+    unconverged = [r for r in RUNGS if rhats[r] > RHAT_MAX]
+    if unconverged:
+        print(f"   ! NOT CONVERGED (max r_hat > {RHAT_MAX}): "
+              + ", ".join(f"{r} {rhats[r]:.3f}" for r in unconverged))
+        print("     scores for these rungs are provisional")
+        print()
 
     print(RULE)
     print("SHIP GATE -- CRPS must improve AND coverage stay in [0.85, 0.95]")
@@ -178,6 +191,8 @@ def main() -> int:
         **{f"crps_{r.lower()}": scores[r]["crps"] for r in RUNGS},
         **{f"cov90_{r.lower()}": scores[r]["coverage_90"] for r in RUNGS},
         **{f"mae_{r.lower()}": scores[r]["mae"] for r in RUNGS},
+        **{f"rhat_{r.lower()}": rhats[r] for r in RUNGS},
+        "converged": not unconverged,
         "sd_stint": float(np.mean(np.asarray(post["sd_stint"]))),
         "nu": nu, "sigma0": s0,
         "unseen_test_stints": unseen,

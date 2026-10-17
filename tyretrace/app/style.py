@@ -15,7 +15,9 @@ COMPOUND = {
 }
 
 RUNG = {"L0": "#8C8C8C", "L1": "#5B8DEF", "L2": "#2BA84A",
-        "L3": "#F5A623", "L4": "#E10600", "L5": "#9B59B6"}
+        "L3": "#F5A623", "L4": "#E10600", "L5": "#9B59B6",
+        "L6": "#8E44AD"}
+BASELINE = "#B0B4BA"          # all protocol baselines share one muted grey
 
 GATE = {"PASS": "🟢", "SHIP": "🟢", "HOLD": "🟡", "FAIL": "🔴", "-": "⚪"}
 
