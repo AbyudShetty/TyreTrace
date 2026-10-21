@@ -32,9 +32,9 @@ underneath, so this goes first.
 | 2b | L3–L5 convergence | 1–2 | r_hat 1.05–1.10, ESS ~25 on beta_f / stint offsets / deg. **Not** circuit centring (tried 2026-10-15, no help). It is the stint-offset vs fuel trade-off the README warns about. Forecasts are stable across runs (cov 0.812/0.813/0.813); fuel estimates from L3+ are not — quote L2's |
 | 3 | Regime / HMM model | 8–15 | now the lead candidate for #2 — warm-up and cliff as states with their own mean, not just their own noise |
 | 4 | Full 2018–2026 pull + Pirelli C1–C5 map | 3–6 | unlocks cross-race compound pooling |
-| 5 | Fuel-pace gap investigation | 2–3 | time-boxed; identified 0.030 vs physics 0.055–0.060 s/lap |
+| 5 | **Fuel-pace gap — now the top science item** | 2–4 | the backtest shows out of sample that the race-identified fuel effect is biased low (slope bias +0.007 s/lap). Suspects: late-race management / derate, stint effects absorbing the pit discontinuity, kappa (full tank / laps) overstated. Fixing it is what would flip the T3 gate |
 | 6 | Published-model baseline (B4) | 2–4 | B1–B3 done. Result so far: L4 beats all three on CRPS, but conventional (0.371) beats L2 (0.381) — same-race forecasting can't test the fuel split; #7 can |
-| 7 | Tier 3 rolling-origin backtest, FP → race | 4–7 | ~190 NUTS fits ≈ a day of CPU; run overnight |
+| ✅ 7 | Tier 3 rolling-origin backtest, FP → race | — | done 2026-10-17 on the 10 cached weekends (7 evaluated). Gate FAIL, recorded as a finding: identified beats naive by 63% after stops, trails fixed 0.030 s/kg by 3.9% because the race-learned fuel effect is too small. Closed-form, 14 s. Extends to 190+ weekends once #4's data is pulled |
 | 8 | Ablation table (protocol §6) | 2–3 | mostly compute |
 | 9 | 2026 headline evaluation | 1–2 | the sample-efficiency claim |
 | ✅ 10 | Run planner v1 (expected information gain) | — | done 2026-10-15: exact linear-Gaussian EIG, beam + local search, dashboard page. Fair result: +0% without tyre changes (rediscovers the standard programme), **+21% with one mid-run tyre change**. v2: cliff/regimes, tyre allocation, two cars |

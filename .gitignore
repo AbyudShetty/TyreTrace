@@ -7,3 +7,7 @@ __pycache__/
 TYRE_TRACE_TrackShift_Idea_Submission.pdf
 .pytest_cache/
 repomix-output.md
+
+# web
+node_modules/
+web/dist/

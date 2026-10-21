@@ -37,6 +37,7 @@ nav = st.navigation({
         page("ladder", "Model ladder", "🪜"),
         page("predictions", "Held-out predictions", "🎯"),
         page("compounds", "Compound contrasts", "⚖️"),
+        page("backtest", "FP → race backtest", "🔁"),
     ],
     "Decide": [
         page("planner", "Run planner", "🧭"),

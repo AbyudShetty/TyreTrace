@@ -48,6 +48,7 @@ tyretrace/
   artifacts.py   per-lap predictions, calibration curves, posteriors -> out/artifacts/
   app/           Streamlit dashboard — reads out/, never fits a model
   planner/       eig.py — FP2 run planner, exact expected information gain
+  backtest/      fp_race.py — Tier 3: forecast each race from its practice
   infer/                                         (empty — later phases)
 audit/           Phase 0 scripts. Each prints a PASS/FAIL gate.
 eval/protocol.md pre-registered metrics, splits, baselines. Frozen.
@@ -148,6 +149,7 @@ HMM at L4.
 | L5 variance model | non-constant sigma | **REJECTED** — wrong functional form |
 | L6 compromised laps | one-sided noise mixture | **REJECTED** — all 3 variants cover worse (0.76) |
 | Baselines (§4) | best rung beats every baseline | **PASS** (3 of 4 built) — but see caveat below |
+| T3 FP → race backtest | identified beats conventional and naive after stops | **FAIL — finding**: beats naive by 63%, trails fixed 0.030 s/kg by 3.9% |
 
 ### What the audit changed
 
@@ -363,6 +365,48 @@ not help. It is the stint-offset vs fuel trade-off described under L4. Forecasts
 are stable across reruns (coverage 0.812 / 0.813 / 0.813), so the ship-gate verdicts
 stand; **fuel estimates from L3+ are not reliable — quote L2's** (r_hat 1.007). The
 L4 audit now reports each rung's r_hat and flags unconverged fits.
+
+### Tier 3 — forecasting the race from practice
+
+`tyretrace/backtest/fp_race.py`, `audit/t3_backtest.py`, dashboard page **FP → race
+backtest**. Every earlier test forecast the end of a race from its start, which only
+needs the fused slope. Here each race is forecast from its own weekend, rolling origin.
+The forecast uses W's practice for degradation, W's qualifying for track evolution,
+races **before** W for the fuel effect, and each driver's first 5 green laps as a pace
+anchor. It then forecasts every later lap. The laps after a pit stop are where fuel
+has to be separated from degradation. 7 weekends, 6,475 laps, 4,743 after a stop.
+
+| method | CRPS after a stop | bias after a stop |
+|---|---|---|
+| naive — practice slope is degradation | 1.606 | +1.87 s |
+| no-track (ablation) | 0.679 | +0.49 s |
+| identified | 0.589 | +0.19 s |
+| **conventional — fixed 0.030 s/kg** | **0.566** | −0.02 s |
+
+**v1 failed for a reason worth recording.** Practice runs are short (4–7 laps) and
+mixed with push and cool-down laps. Pooling laps as if independent made three erratic
+runs look precise: Montréal HARD came out at −0.23 s/lap and Monza SOFT at +0.41. A
+missing compound borrowing the mean of the others spread the outlier further. CRPS
+was 1.43. v2 fits a slope per run, pools runs by random effects so disagreement
+widens the interval, and updates a degradation prior built from earlier races' pit
+stops. CRPS dropped to 0.54. That diagnosis came from v1's failure, not from v2's
+gate: v2 still fails.
+
+**Why identified trails conventional.** The race lap slope (fuel plus track) forecast
+for each weekend, against what that race did, measured afterwards and never fed back:
+
+| slope forecast | MAE | bias |
+|---|---|---|
+| conventional, fixed 0.030 s/kg | 0.0101 s/lap | +0.0015 |
+| identified, learned from earlier races | 0.0133 s/lap | +0.0072 |
+| mean of earlier races, no decomposition | 0.0175 s/lap | +0.0033 |
+
+Decomposing by burn rate and track evolution beats plain averaging, but the learned
+fuel effect is **too small**: races speed up more than it predicts. This is the first
+out-of-sample evidence on the open fuel-pace gap (identified ~0.03 vs physics
+0.055–0.06 s/lap). It says the **race identification is biased low**, not that physics
+is wrong. Tightening the fuel prior toward 0.030 s/kg would pass the gate. It would
+also be tuning on the test set, so it was not done. The bias is the next thing to explain.
 
 ### The run planner
 

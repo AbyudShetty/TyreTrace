@@ -1,0 +1,497 @@
+{
+ "priors": {
+  "default": {
+   "beta_f": [
+    0.033,
+    0.01
+   ],
+   "deg": [
+    0.05,
+    0.04
+   ],
+   "tau": [
+    -0.0165,
+    0.003
+   ],
+   "run_sd": 3.0,
+   "sigma": 0.3,
+   "kappa": 1.8,
+   "lap_s": 90.0
+  },
+  "noisy": {
+   "beta_f": [
+    0.033,
+    0.015
+   ],
+   "deg": [
+    0.05,
+    0.06
+   ],
+   "tau": [
+    -0.0165,
+    0.003
+   ],
+   "run_sd": 3.0,
+   "sigma": 0.5,
+   "kappa": 1.8,
+   "lap_s": 90.0
+  },
+  "diffuse_runs": {
+   "beta_f": [
+    0.033,
+    0.01
+   ],
+   "deg": [
+    0.05,
+    0.04
+   ],
+   "tau": [
+    -0.0165,
+    0.003
+   ],
+   "run_sd": 1000.0,
+   "sigma": 0.3,
+   "kappa": 1.8,
+   "lap_s": 90.0
+  }
+ },
+ "cases": [
+  {
+   "prior": "default",
+   "programme": "soft10",
+   "runs": [
+    {
+     "compound": "SOFT",
+     "laps": 10,
+     "start_fuel_kg": 60.0,
+     "swap_to": null
+    }
+   ],
+   "starts": [
+    5.0
+   ],
+   "eig": {
+    "degradation per compound": 0.5482931895861546,
+    "SOFT \u2212 HARD contrast": 0.2232599554823288,
+    "degradation + fuel effect": 0.7484347652190698
+   },
+   "posterior_sd": {
+    "beta_f": 0.009307607697572997,
+    "deg_SOFT": 0.02735314671000364,
+    "deg_MEDIUM": 0.04,
+    "deg_HARD": 0.04,
+    "tau": 0.0029897193529374155,
+    "SOFT\u2212HARD": 0.048458174077641254
+   }
+  },
+  {
+   "prior": "default",
+   "programme": "swap16",
+   "runs": [
+    {
+     "compound": "SOFT",
+     "laps": 16,
+     "start_fuel_kg": 100.0,
+     "swap_to": "MEDIUM"
+    }
+   ],
+   "starts": [
+    5.0
+   ],
+   "eig": {
+    "degradation per compound": 1.1735571068381445,
+    "SOFT \u2212 HARD contrast": 0.25582060732163453,
+    "degradation + fuel effect": 1.877044747793416
+   },
+   "posterior_sd": {
+    "beta_f": 0.007515689103644478,
+    "deg_SOFT": 0.02538812582415528,
+    "deg_MEDIUM": 0.029342529050708326,
+    "deg_HARD": 0.04,
+    "tau": 0.0029586520005522783,
+    "SOFT\u2212HARD": 0.047376755195592916
+   }
+  },
+  {
+   "prior": "default",
+   "programme": "typical",
+   "runs": [
+    {
+     "compound": "SOFT",
+     "laps": 3,
+     "start_fuel_kg": 20.0,
+     "swap_to": null
+    },
+    {
+     "compound": "MEDIUM",
+     "laps": 11,
+     "start_fuel_kg": 90.0,
+     "swap_to": null
+    },
+    {
+     "compound": "HARD",
+     "laps": 11,
+     "start_fuel_kg": 90.0,
+     "swap_to": null
+    }
+   ],
+   "starts": [
+    5.0,
+    16.5,
+    40.0
+   ],
+   "eig": {
+    "degradation per compound": 1.3651312735461336,
+    "SOFT \u2212 HARD contrast": 0.27864835243615815,
+    "degradation + fuel effect": 1.8322099245601315
+   },
+   "posterior_sd": {
+    "beta_f": 0.008331507896447862,
+    "deg_SOFT": 0.039296898411841565,
+    "deg_MEDIUM": 0.025298703656641167,
+    "deg_HARD": 0.025301271553222954,
+    "tau": 0.0029737725474219133,
+    "SOFT\u2212HARD": 0.04663301303486561
+   }
+  },
+  {
+   "prior": "default",
+   "programme": "mixed",
+   "runs": [
+    {
+     "compound": "HARD",
+     "laps": 8,
+     "start_fuel_kg": 30.0,
+     "swap_to": null
+    },
+    {
+     "compound": "MEDIUM",
+     "laps": 12,
+     "start_fuel_kg": 100.0,
+     "swap_to": "HARD"
+    }
+   ],
+   "starts": [
+    5.0,
+    24.0
+   ],
+   "eig": {
+    "degradation per compound": 0.9304068415944299,
+    "SOFT \u2212 HARD contrast": 0.2071393544594168,
+    "degradation + fuel effect": 1.4327476506701675
+   },
+   "posterior_sd": {
+    "beta_f": 0.008079568518159733,
+    "deg_SOFT": 0.04,
+    "deg_MEDIUM": 0.030137663198213666,
+    "deg_HARD": 0.028306582629618215,
+    "tau": 0.002966897405608446,
+    "SOFT\u2212HARD": 0.04900267972435185
+   }
+  },
+  {
+   "prior": "noisy",
+   "programme": "soft10",
+   "runs": [
+    {
+     "compound": "SOFT",
+     "laps": 10,
+     "start_fuel_kg": 60.0,
+     "swap_to": null
+    }
+   ],
+   "starts": [
+    5.0
+   ],
+   "eig": {
+    "degradation per compound": 0.4988957809006498,
+    "SOFT \u2212 HARD contrast": 0.20715048876232245,
+    "degradation + fuel effect": 0.6891510766017304
+   },
+   "posterior_sd": {
+    "beta_f": 0.01377363915340401,
+    "deg_SOFT": 0.04245889189433299,
+    "deg_MEDIUM": 0.06,
+    "deg_HARD": 0.06,
+    "tau": 0.0029956340443952653,
+    "SOFT\u2212HARD": 0.07350345230596081
+   }
+  },
+  {
+   "prior": "noisy",
+   "programme": "swap16",
+   "runs": [
+    {
+     "compound": "SOFT",
+     "laps": 16,
+     "start_fuel_kg": 100.0,
+     "swap_to": "MEDIUM"
+    }
+   ],
+   "starts": [
+    5.0
+   ],
+   "eig": {
+    "degradation per compound": 1.0709025544774604,
+    "SOFT \u2212 HARD contrast": 0.23269960205802537,
+    "degradation + fuel effect": 1.7413762175805902
+   },
+   "posterior_sd": {
+    "beta_f": 0.011172347275605078,
+    "deg_SOFT": 0.04018393457861198,
+    "deg_MEDIUM": 0.04466961045453714,
+    "deg_HARD": 0.06,
+    "tau": 0.002981462178775327,
+    "SOFT\u2212HARD": 0.07221321622956678
+   }
+  },
+  {
+   "prior": "noisy",
+   "programme": "typical",
+   "runs": [
+    {
+     "compound": "SOFT",
+     "laps": 3,
+     "start_fuel_kg": 20.0,
+     "swap_to": null
+    },
+    {
+     "compound": "MEDIUM",
+     "laps": 11,
+     "start_fuel_kg": 90.0,
+     "swap_to": null
+    },
+    {
+     "compound": "HARD",
+     "laps": 11,
+     "start_fuel_kg": 90.0,
+     "swap_to": null
+    }
+   ],
+   "starts": [
+    5.0,
+    16.5,
+    40.0
+   ],
+   "eig": {
+    "degradation per compound": 1.2556684742319453,
+    "SOFT \u2212 HARD contrast": 0.26004904494570225,
+    "degradation + fuel effect": 1.741436129237597
+   },
+   "posterior_sd": {
+    "beta_f": 0.011764234648211353,
+    "deg_SOFT": 0.05911052698247486,
+    "deg_MEDIUM": 0.039214471010749,
+    "deg_HARD": 0.039218914553391264,
+    "tau": 0.002986212790877425,
+    "SOFT\u2212HARD": 0.07085715083006265
+   }
+  },
+  {
+   "prior": "noisy",
+   "programme": "mixed",
+   "runs": [
+    {
+     "compound": "HARD",
+     "laps": 8,
+     "start_fuel_kg": 30.0,
+     "swap_to": null
+    },
+    {
+     "compound": "MEDIUM",
+     "laps": 12,
+     "start_fuel_kg": 100.0,
+     "swap_to": "HARD"
+    }
+   ],
+   "starts": [
+    5.0,
+    24.0
+   ],
+   "eig": {
+    "degradation per compound": 0.8412815307600955,
+    "SOFT \u2212 HARD contrast": 0.19635029509935478,
+    "degradation + fuel effect": 1.3304604140595355
+   },
+   "posterior_sd": {
+    "beta_f": 0.01185050259606471,
+    "deg_SOFT": 0.06,
+    "deg_MEDIUM": 0.047020949145769035,
+    "deg_HARD": 0.04340803520715489,
+    "tau": 0.0029843157937837973,
+    "SOFT\u2212HARD": 0.07405577303995683
+   }
+  },
+  {
+   "prior": "diffuse_runs",
+   "programme": "soft10",
+   "runs": [
+    {
+     "compound": "SOFT",
+     "laps": 10,
+     "start_fuel_kg": 60.0,
+     "swap_to": null
+    }
+   ],
+   "starts": [
+    5.0
+   ],
+   "eig": {
+    "degradation per compound": 0.5402808075418368,
+    "SOFT \u2212 HARD contrast": 0.22069733264309407,
+    "degradation + fuel effect": 0.7248535902305561
+   },
+   "posterior_sd": {
+    "beta_f": 0.009451194709662844,
+    "deg_SOFT": 0.027505482148399114,
+    "deg_MEDIUM": 0.04,
+    "deg_HARD": 0.04,
+    "tau": 0.0029899755366716535,
+    "SOFT\u2212HARD": 0.048544325602647966
+   }
+  },
+  {
+   "prior": "diffuse_runs",
+   "programme": "swap16",
+   "runs": [
+    {
+     "compound": "SOFT",
+     "laps": 16,
+     "start_fuel_kg": 100.0,
+     "swap_to": "MEDIUM"
+    }
+   ],
+   "starts": [
+    5.0
+   ],
+   "eig": {
+    "degradation per compound": 1.159905117358797,
+    "SOFT \u2212 HARD contrast": 0.25581870152115166,
+    "degradation + fuel effect": 1.8411506062275407
+   },
+   "posterior_sd": {
+    "beta_f": 0.007701360389931334,
+    "deg_SOFT": 0.02538824261329305,
+    "deg_MEDIUM": 0.029591917485994185,
+    "deg_HARD": 0.04,
+    "tau": 0.002961608361844344,
+    "SOFT\u2212HARD": 0.04737681778033882
+   }
+  },
+  {
+   "prior": "diffuse_runs",
+   "programme": "typical",
+   "runs": [
+    {
+     "compound": "SOFT",
+     "laps": 3,
+     "start_fuel_kg": 20.0,
+     "swap_to": null
+    },
+    {
+     "compound": "MEDIUM",
+     "laps": 11,
+     "start_fuel_kg": 90.0,
+     "swap_to": null
+    },
+    {
+     "compound": "HARD",
+     "laps": 11,
+     "start_fuel_kg": 90.0,
+     "swap_to": null
+    }
+   ],
+   "starts": [
+    5.0,
+    16.5,
+    40.0
+   ],
+   "eig": {
+    "degradation per compound": 1.330062906732852,
+    "SOFT \u2212 HARD contrast": 0.27315430974209554,
+    "degradation + fuel effect": 1.7383342762239828
+   },
+   "posterior_sd": {
+    "beta_f": 0.008872586552618213,
+    "deg_SOFT": 0.039311301811656964,
+    "deg_MEDIUM": 0.02565132873418751,
+    "deg_HARD": 0.02565132875475861,
+    "tau": 0.0029799858835617248,
+    "SOFT\u2212HARD": 0.04681093852305811
+   }
+  },
+  {
+   "prior": "diffuse_runs",
+   "programme": "mixed",
+   "runs": [
+    {
+     "compound": "HARD",
+     "laps": 8,
+     "start_fuel_kg": 30.0,
+     "swap_to": null
+    },
+    {
+     "compound": "MEDIUM",
+     "laps": 12,
+     "start_fuel_kg": 100.0,
+     "swap_to": "HARD"
+    }
+   ],
+   "starts": [
+    5.0,
+    24.0
+   ],
+   "eig": {
+    "degradation per compound": 0.9157965113166725,
+    "SOFT \u2212 HARD contrast": 0.20259297835261209,
+    "degradation + fuel effect": 1.3837652818622914
+   },
+   "posterior_sd": {
+    "beta_f": 0.008350461678918938,
+    "deg_SOFT": 0.04,
+    "deg_MEDIUM": 0.030140901650115758,
+    "deg_HARD": 0.028573495556354956,
+    "tau": 0.0029714865659203234,
+    "SOFT\u2212HARD": 0.049157345822461125
+   }
+  }
+ ],
+ "plans": [
+  {
+   "reserve": true,
+   "swaps": true,
+   "bits": 1.655434830661873,
+   "runs": [
+    "20 laps MEDIUM (100 kg) \u2192 HARD at half"
+   ]
+  },
+  {
+   "reserve": true,
+   "swaps": false,
+   "bits": 1.3709259755857834,
+   "runs": [
+    "11 laps HARD (100 kg)",
+    "11 laps MEDIUM (100 kg)"
+   ]
+  },
+  {
+   "reserve": false,
+   "swaps": true,
+   "bits": 2.053276403819436,
+   "runs": [
+    "18 laps SOFT (100 kg) \u2192 HARD at half",
+    "10 laps MEDIUM (100 kg)"
+   ]
+  },
+  {
+   "reserve": false,
+   "swaps": false,
+   "bits": 2.039206570782567,
+   "runs": [
+    "15 laps MEDIUM (100 kg)",
+    "15 laps SOFT (100 kg)"
+   ]
+  }
+ ],
+ "standard_bits": 1.3651312735461336
+}

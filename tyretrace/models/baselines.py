@@ -19,7 +19,15 @@ spread they observe in training, which is what anyone using them would quote.
 """
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
+
+# joblib probes the physical core count through a Windows tool that is often
+# missing and warns about it. Its suggested fix (LOKY_MAX_CPU_COUNT) is only
+# honoured below the logical core count, i.e. by giving up a core -- so
+# silence exactly this message instead.
+warnings.filterwarnings("ignore", message="Could not find the number of physical cores")
 
 from tyretrace.models.ladder import Design
 

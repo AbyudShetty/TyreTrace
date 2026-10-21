@@ -102,6 +102,16 @@ TASKS: dict[str, Task] = {t.name: t for t in [
     Task("baselines", "audit/b1_baselines.py",
          "Protocol baselines (naive, conventional, GBM) on the ladder's split",
          deps=("l4",), inputs=("out/audit_race.parquet",), minutes=1.5),
+
+    Task("backtest", "audit/t3_backtest.py",
+         "Tier 3: forecast each race from its practice, rolling origin",
+         deps=("a1b",), minutes=0.5,
+         inputs=("out/audit_race.parquet", "out/audit_quali.parquet",
+                 "out/audit_practice.parquet"),
+         expect="FAIL",
+         expect_why="beats naive by 63% after stops, but the fixed 0.030 s/kg "
+                    "beats the race-learned fuel effect by 3.9% -- evidence the "
+                    "race identification of fuel is biased low"),
 ]}
 
 # everything runnable without touching the network
@@ -323,6 +333,9 @@ def main(argv=None) -> int:
 
     l = sub.add_parser("list", help="task graph and staleness")
     l.set_defaults(fn=cmd_list)
+
+    x = sub.add_parser("export", help="write JSON for the web dashboard")
+    x.set_defaults(fn=lambda a: __import__("tyretrace.export", fromlist=["main"]).main())
 
     a = sub.add_parser("app", help="open the dashboard")
     a.add_argument("--port", type=int, default=8501)
