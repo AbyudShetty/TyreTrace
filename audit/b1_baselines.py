@@ -73,7 +73,6 @@ def main() -> int:
         cal_tabs.append(artifacts.calibration(pp, d_te.y)
                         .with_columns(pl.lit(rung).alias("rung")))
         print(f"   {name:<22s} fitted in {time.time()-t0:4.1f}s")
-    print("   B4 published           NOT BUILT -- protocol requires it before any claim")
     print()
 
     l4 = results.get("l4").get("metrics", {})
@@ -104,10 +103,13 @@ def main() -> int:
     margin = 100 * (1 - ladder[best]["crps"] / scores[best_base]["crps"])
     beats_all = all(ladder[best]["crps"] < s["crps"] for s in scores.values())
     ml = scores["B3 gradient boosting"]["crps"]
+    pub = scores["B4 published"]["crps"]
     print(f"   best ladder rung {best} vs best baseline {best_base}: "
           f"CRPS {margin:+.1f}%")
     print(f"   vs the ML baseline (protocol section 8 falsification check): "
           f"{100*(1-ladder[best]['crps']/ml):+.1f}%")
+    print(f"   vs the published race-simulation model (B4): "
+          f"{100*(1-ladder[best]['crps']/pub):+.1f}%")
     print()
     print("   Read with care: forecasting the rest of the same race only needs the")
     print("   FUSED slope, so a wrong fuel assumption costs the conventional model")
@@ -123,13 +125,13 @@ def main() -> int:
         **{f"cov90_{n.split()[0].lower()}": s["coverage_90"] for n, s in scores.items()},
         "best_rung": best, "best_baseline": best_base,
         "margin_vs_best_baseline_pct": margin,
-        "published_baseline_built": False,
+        "published_baseline_built": True,
     }, gate="PASS" if beats_all else "FAIL")
 
     print("=" * 76)
     print(f"BASELINE GATE: {'PASS' if beats_all else 'FAIL'} -- {best} "
           f"{'beats' if beats_all else 'does NOT beat'} every baseline built so far "
-          "(3 of 4)")
+          "(all 4)")
     print("=" * 76)
     return 0 if beats_all else 1
 

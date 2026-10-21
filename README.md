@@ -148,7 +148,14 @@ HMM at L4.
 | L4 calibration | stint offsets + heavy tails | **HOLD** — best CRPS 0.344, coverage 0.813 |
 | L5 variance model | non-constant sigma | **REJECTED** — wrong functional form |
 | L6 compromised laps | one-sided noise mixture | **REJECTED** — all 3 variants cover worse (0.76) |
-| Baselines (§4) | best rung beats every baseline | **PASS** (3 of 4 built) — but see caveat below |
+| Baselines (§4) | best rung beats every baseline | **PASS** — all 4 built; L4 beats the published race-sim model by only 1.7% |
+| F1 fuel-pace gap | fuel alone predicts unseen race slopes best | **PASS** — gap was a track-evolution attribution |
+| A6 ablations | every component earns its place | every built component does |
+| L3 after the slope fix | ship gate | **SHIP** on the 10 weekends (CRPS −4.0%, coverage 0.858) — **does not replicate** on 61 new weekends (coverage 0.797, no CRPS gain) |
+| D1 source parity | OpenF1 agrees with FastF1 | **PASS** — 40 shared sessions |
+| T3 on the lake | pre-registered fuel-only beats conventional | **FAIL** — methods tie on 68 weekends |
+| F1 on the lake | fuel alone explains race slopes | **FAIL** — small race track term (s 0.35) earns its place |
+| H1 2026 | fuel-only beats conventional under both fuel loads | **FAIL** — flips with the unverified 2026 fuel load |
 | T3 FP → race backtest | identified beats conventional and naive after stops | **FAIL — finding**: beats naive by 63%, trails fixed 0.030 s/kg by 3.9% |
 
 ### What the audit changed
@@ -451,6 +458,171 @@ only sanctioned bridge, with a regression test. L2 supersedes this table anyway 
 estimating the scaling rather than sweeping it.
 
 ---
+
+## Closing the core (October 2026)
+
+### The fuel-pace gap, solved
+
+`audit/f1_fuel_gap.py`. A race shows only the fused slope, fuel plus race track
+evolution. L2 split it as `-(beta_f*kappa) - s*tau_quali` and found s = 0.87: the
+race track keeps improving at 87% of qualifying's rate. Whatever L2 credits to the
+track, it subtracts from fuel.
+
+L2 had no room for circuit-to-circuit scatter, so ten races' tiny within-race
+standard errors pinned s as if the formula held exactly. With between-race scatter
+allowed:
+
+| | estimate |
+|---|---|
+| fuel effect, fuel alone | **0.0293 ± 0.0024 s/kg** — the physics value |
+| race/quali scale s, with fuel | 0.33 ± 0.55, 90% [−0.58, 1.24] — **not identified** |
+
+Leave-one-race-out prediction of each race's slope: physics alone MAE 0.0116,
+fitted fuel-only 0.0131, L2's fuel + track 0.0137, plain mean 0.0177. No late-race
+slowdown either (second half vs first half +0.006 ± 0.007 s/lap). **The gap was
+never about fuel.** It came from overconfidently crediting race track evolution.
+
+Two consequences. `tyretrace/models/ladder.py:_lap_coef` now gives every weekend a
+partially pooled slope deviation, so L2–L6 can no longer be overconfident about s.
+Refitted, L2's fuel pace is 0.041 s/lap, 90% [0.026, 0.055], and s is 0.61, 90%
+[0.09, 1.11]: honest about what ten races cannot pin. The ladder improved too.
+**L3 ships**, the first rung to: CRPS 0.346 (−4.0% vs L2), coverage 0.858, inside
+the band, converged (r̂ 1.01), and better than all four baselines. L4 (0.354,
+coverage 0.807, r̂ 1.10) does not. The fix was motivated by analysis of the same
+ten races, so it was re-checked out of sample: on **61 lake weekends** that
+analysis never touched, **it does not replicate**. L3's CRPS is 0.626 against L2's
+0.624, and coverage is 0.797, overconfident again. The ten-weekend ship was real
+on those ten weekends and does not generalise. Calibration at scale remains the
+open problem. And a **fuel-only** forecasting method
+was **pre-registered on 2026-10-21, before the lake was pulled**, so the lake gives
+it a clean out-of-sample test.
+
+### B4 — the published baseline
+
+`tyretrace/models/baselines.py:published`, after Heilmeier et al.'s race simulation
+(TUM): fuel mass times a fixed sensitivity, plus a logarithmic tyre curve per
+compound. Verify the exact equations against the paper before citing. It is the
+strongest baseline: CRPS 0.350 against L4's 0.344, only 1.7% behind. All four
+protocol baselines now exist.
+
+### Post-race validation
+
+`tyretrace/backtest/postrace.py`, `audit/p1_postrace.py`. The tool the submission
+promised: each lap's forecast error is split into **slope** (fuel + race track,
+which a race cannot separate), **tyres**, **traffic** and **noise**. The split is
+**exact**: the parts are checked to sum to the error on every lap, and a test
+proves that check fires. On the backtest, the largest systematic error for every
+method was traffic (+0.11 s): each driver's anchor laps are the crowded opening
+laps.
+
+### Traffic-aware anchors
+
+So the anchor is now de-trafficked with the wake cost learned from earlier races,
+and the expected traffic of later laps is added back. Future gaps are unknown
+before the race, so the forecast carries their expectation. On the ten weekends,
+identified CRPS after a stop fell from 0.589 to 0.569 and its bias from +0.19 s to
++0.06 s. That puts it within 0.7% of conventional, down from 3.9%. Pre-registered
+for the lake run.
+
+### Recalibration — tried, not adopted
+
+Rolling empirical recalibration reshapes each forecast's interval using
+standardised errors from earlier races only, asymmetry included. Coverage rose
+(0.78 → 0.81), but CRPS worsened by 8.8%, so it does not ship. Most of the error is
+a whole-race shift, not independent lap noise, and reshaping each lap's spread
+cannot fix a shift every lap of a race shares.
+
+### Ablations
+
+`audit/a6_ablations.py`, protocol §6. Remove each component and the CRPS change
+after a pit stop:
+
+| component | change without it |
+|---|---|
+| degradation prior (earlier races' pit stops) | +192% |
+| hierarchy (L0 → L1, twin) | +190% |
+| lap filtering | +31% (also changes which laps are scored) |
+| random-effects pooling of practice runs | +18% |
+| track evolution | +15% |
+| stint offsets + heavy tails (L3 → L4) | +6% |
+| dirty air (L2 → L3) | +4% |
+| telemetry, regime switching, censoring | not built |
+
+Every built component earns its place.
+
+### The data lake — and why it is OpenF1 now
+
+`tyretrace/data/openf1.py`, `tyretrace/data/bulk.py`. F1's live-timing archive,
+which FastF1 reads, now returns **401 Unauthorized**. The original ten weekends
+remain as pulled. Everything since 2023 comes from OpenF1, in the same canonical
+schema: **71 dry race weekends, 93,861 race laps** (`python -m tyretrace run lake`,
+about an hour, resumable). 2018–2022 is not publicly available with tyre data.
+
+`audit/d1_source_parity.py` checks the two sources on all 40 sessions they share.
+Lap time agrees to the millisecond on 99.0% of laps, fresh-set tyre age on 99.4%,
+per-lap age increments on 99.5%, and the long-run laps the models see overlap
+98.7%. The check found two adapter bugs, both fixed and covered by tests. Practice
+yellow and red flags carry no lap number and had been ignored (Baku FP1 2023 read
+all green). And OpenF1 sometimes starts a race stint one lap early, so boundaries
+now snap to the pit-out lap. One difference is real and documented: on **used**
+sets OpenF1's tyre age reads about 3–4 laps lower.
+
+Wet and mixed races are excluded everywhere (`fp_race.dry_weekends`): on a drying
+track lap times fall for reasons that are neither fuel nor tyres. Four such races
+had taken the cross-race slope scatter from 0.017 to 0.152 s/lap. All ten original
+weekends are dry, so nothing recorded there changes.
+
+### What 68 more weekends changed
+
+**The fuel-pace gap, refined.** On 71 dry races, fuel alone gives
+**0.0324 ± 0.0011 s/kg** — the physics value. A small race track evolution does
+earn its place, though: s = 0.35 ± 0.14 of the qualifying rate, against the 0.87
+L2 used to claim. With it, fuel is 0.027 s/kg. On ten races, s was not identified
+at all. With enough races it is, and it is about **a third** of what L2 asserted.
+That overstatement was the gap.
+
+**The pre-registered lake backtest fails, and here is the honest reading.** On 68
+dry weekends (39,886 laps after a pit stop), CRPS after a stop is: conventional
+0.657, ours without the track term 0.657, identified 0.668, fuel-only 0.674, and
+naive 1.404. Paired per weekend, the fuel-corrected methods are **statistically
+tied**: identified vs conventional t = +0.52, ours better on 54% of weekends. All of
+them beat naive decisively (t = −9.6, on 88% of weekends). Our race-slope forecast
+is now the best of the three (MAE 0.0121 vs conventional 0.0126 vs plain mean
+0.0153).
+
+So for 2023–2025 the paddock's 0.030 s/kg **is right**. Our data recovers it
+independently (0.0324 ± 0.0011), so the assumption no longer needs to be taken on
+faith. What limits forecasting a race from practice is **degradation estimated
+from practice**. Over 68 weekends the post-race split puts its error at rms
+0.92 s, against 0.50 s for the fuel and track slope, 0.34 s for traffic and 0.69 s
+for lap noise. That, not the fuel split, is the next thing to improve.
+
+**A finding from ten weekends that did not survive 68.** On the ten, the practice
+track-evolution term earned its place (+15%). On 68 weekends, dropping it improves
+CRPS by 2.5%. It is recorded as a reversal, not deleted.
+
+### 2026 — the new regulations
+
+`audit/h1_2026.py`. Fifteen dry 2026 races, each forecast from its own weekend
+with every earlier race as history. 2026 cars are widely reported to start with
+about 70 kg of fuel, a figure not verified here, so every result is run under 70 kg
+and under 110 kg:
+
+| method | CRPS, 70 kg | CRPS, 110 kg |
+|---|---|---|
+| **identified** | **0.580** | 0.572 |
+| fuel-only (gated) | 0.623 | 0.576 |
+| conventional | 0.630 | 0.569 |
+| naive | 1.336 | 1.336 |
+
+The gate fails because the verdict flips with the fuel load. Two results stand
+regardless. The identified method is the most robust to the assumption, and it is
+best by 8% under the new rules. And the races themselves, which need no fuel-load
+assumption, **contradict the 70 kg figure with unchanged fuel sensitivity**. 2026
+races speed up by −0.052 s/lap against −0.057 for 2023–25 (difference
++0.006 ± 0.005). At 70 kg the slope should be about −0.037. Either 2026 races
+carry well over 70 kg, or each kg costs more time in the new cars. Telling those
+apart needs the true fuel load.
 
 ## Honest scope
 

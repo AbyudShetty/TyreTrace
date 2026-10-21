@@ -47,6 +47,13 @@ export default function Overview() {
   const h = d.headline;
 
   const best = d.ladder.reduce((a, b) => (b.crps < a.crps ? b : a));
+  // the protocol's ship rule, applied in rung order -- the same test the audit gates on
+  const shipped = d.ladder.reduce<{ rung: string; cov90: number } | null>((acc, r, i) => {
+    const below = d.ladder[i - 1];
+    const inBand = r.cov90 >= 0.85 && r.cov90 <= 0.95;
+    const better = !below || r.crps < below.crps;
+    return inBand && better && r.rung !== "L5" ? r : acc;
+  }, null);
   const rows: ModelRow[] = [
     ...d.ladder.map((r) => ({
       id: r.rung, label: r.rung, sub: RUNG_NOTE[r.rung], crps: r.crps, cov90: r.cov90, mae: r.mae, rhat: r.rhat,
@@ -94,9 +101,14 @@ export default function Overview() {
             sub={`Last 30% of each race, ${d.data.weekends} weekends · a model ships only if it beats the one below AND its 90% interval holds 85–95% of laps`}>
         <ModelRows rows={rows} band={[0.85, 0.95]} />
         <p className="note" style={{ marginTop: 12 }}>
-          <strong>{best.rung} is the most accurate model and beats every baseline, but no model ships:</strong> all
-          of them are overconfident, with too few laps inside their 90% intervals. Calibration is the open
-          problem. Hover a row for the convergence check (r̂).
+          {shipped ? (
+            <><strong>{shipped.rung} ships:</strong> it beats the rung below on forecast error and its 90% intervals
+            hold {pct(shipped.cov90, 1)} of laps, inside the band. Rungs above it are more flexible but
+            overconfident. Hover a row for the convergence check (r̂).</>
+          ) : (
+            <><strong>{best.rung} is the most accurate model, but no model ships:</strong> all of them are
+            overconfident, with too few laps inside their 90% intervals. Hover a row for the convergence check (r̂).</>
+          )}
         </p>
       </Card>
 

@@ -51,7 +51,13 @@ def load_session(year: int, rnd: int, session: str) -> pl.DataFrame:
             print(f"    ! {year} r{rnd} {session}: {type(exc).__name__}: {exc}")
             return schema.empty()
 
-    laps = ses.laps
+    # FastF1 logs, rather than raises, when lap data fails to load -- the
+    # error only surfaces here. One bad session must not abort a bulk pull.
+    try:
+        laps = ses.laps
+    except Exception as exc:                          # noqa: BLE001
+        print(f"    ! {year} r{rnd} {session}: laps not loaded ({type(exc).__name__})")
+        return schema.empty()
     if laps is None or len(laps) == 0:
         return schema.empty()
 

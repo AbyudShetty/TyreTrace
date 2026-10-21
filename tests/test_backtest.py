@@ -152,3 +152,70 @@ def test_race_degradation_ignores_compounds_with_few_laps():
     assert abs(d["MEDIUM"] - DEG["MEDIUM"]) < 0.01
     few = r.filter(~((pl.col("compound_rel") == "HARD") & (pl.col("driver") != "D0")))
     assert "HARD" not in B.race_degradation(few)
+
+
+def test_fit_fuel_only_recovers_beta_with_scatter_between_races():
+    rng = np.random.default_rng(5)
+    beta = 0.031
+    wks = [B.Weekend(f"w{i}", -0.01, 90.0, k) for i, k in enumerate(rng.uniform(1.5, 2.2, 30))]
+    coefs = [-beta * w.kappa + rng.normal(0, 0.008) for w in wks]   # real scatter
+    m, sd = B.fit_fuel_only(coefs, [0.0005] * 30, wks)
+    assert abs(m - beta) < 3 * sd
+    # Between-race scatter must widen the interval far beyond what the tiny
+    # per-race se alone implies (~0.0005 / (1.85 * sqrt(30)) ~ 5e-5) -- the
+    # overconfidence that made L2 so sure about s.
+    se_only = 0.0005 / (np.mean([w.kappa for w in wks]) * np.sqrt(30))
+    assert sd > 5 * se_only
+
+
+def test_fixed_effect_pooling_is_the_narrower_ablation():
+    est, se = np.array([-0.3, 0.05, 0.4]), np.full(3, 0.01)
+    _, sd_re = B.random_effects(est, se)
+    _, sd_fe = B.random_effects(est, se, between=False)
+    assert sd_fe < sd_re / 10
+
+
+def test_traffic_aware_anchor_removes_anchor_traffic_bias():
+    """Anchor laps in dirty air make the forecast too slow; de-trafficking
+    them with the true wake (and expecting no later traffic) removes it."""
+    r = race(seed=6).with_columns(
+        pl.when(pl.col("lap_in_session") < 8).then(0.8).otherwise(0.0).alias("dirty_air"))
+    r = r.with_columns(pl.col("lap_time_s") + 0.5 * pl.col("dirty_air"))
+    deg = {c: (v, 0.001, "practice") for c, v in DEG.items()}
+    lc = (-FUEL_PACE + TRACK, 0.0005)
+    plain = B.forecast(r, deg, lc, sigma=0.1)
+    aware = B.forecast(r, deg, lc, sigma=0.1, traffic=(0.5, 0.0))
+    y = plain.laps["lap_time_s"].to_numpy()
+    bias = lambda fc: float(np.mean(np.median(fc.draws, axis=0) - y))
+    assert bias(plain) > 0.3          # anchored in traffic: forecast too slow
+    assert abs(bias(aware)) < 0.05
+
+
+def test_recalibration_uses_the_empirical_shape_and_keeps_the_median():
+    r = race(seed=7)
+    deg = {c: (v, 0.001, "practice") for c, v in DEG.items()}
+    fc = B.forecast(r, deg, (-FUEL_PACE + TRACK, 0.0005), sigma=0.1)
+    z_hist = np.concatenate([np.full(900, 0.0), np.full(100, 4.0)])   # skewed history
+    cal = B.recalibrate(fc, z_hist)
+    assert np.allclose(np.median(cal.draws, axis=0), np.median(fc.draws, axis=0), atol=0.02)
+    q95 = np.quantile(cal.draws, 0.95, axis=0) - np.median(cal.draws, axis=0)
+    q05 = np.median(cal.draws, axis=0) - np.quantile(cal.draws, 0.05, axis=0)
+    assert np.all(q95 > 5 * np.maximum(q05, 1e-9))      # learned the asymmetry
+
+
+def test_dry_filter_drops_any_race_with_a_wet_lap_and_keeps_the_original_ten():
+    dry_race = race().with_columns(pl.lit("2024_01_R").alias("session_uid"))
+    wet_race = race().with_columns(pl.lit("2025_12_R").alias("session_uid"),
+                                   pl.when(pl.col("lap_in_session") == 3)
+                                     .then(pl.lit("INTERMEDIATE"))
+                                     .otherwise(pl.col("compound_rel")).alias("compound_rel"))
+    assert B.dry_weekends(pl.concat([dry_race, wet_race])) == {"2024_01"}
+
+
+def test_the_original_ten_weekends_are_all_dry():
+    from tyretrace.data import sources
+    if not sources.available("audit"):
+        import pytest
+        pytest.skip("audit data not present")
+    r = sources.load("audit")["race"]
+    assert len(B.dry_weekends(r)) == r["session_uid"].n_unique() == 10

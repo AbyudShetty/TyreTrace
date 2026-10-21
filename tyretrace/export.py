@@ -55,6 +55,13 @@ def _m(task: str, key: str):
     return results.get(task).get("metrics", {}).get(key)
 
 
+def _table(task: str, name: str):
+    """An artifact table as a list of row dicts, or None if not produced yet."""
+    from tyretrace import artifacts
+    t = artifacts.load(task, name)
+    return t.to_dicts() if t is not None else None
+
+
 # --------------------------------------------------------------------------
 # summary -- overview page
 # --------------------------------------------------------------------------
@@ -82,11 +89,15 @@ def summary() -> dict:
              "cov90": _m("ladder", f"twin_cov90_{r.lower()}")} for r in ("L0", "L1")]
     base = [{"name": n, "key": k, "crps": _m("baselines", f"crps_{k}"),
              "mae": _m("baselines", f"mae_{k}"), "cov90": _m("baselines", f"cov90_{k}")}
-            for k, n in (("b1", "Naive"), ("b2", "Conventional"), ("b3", "Gradient boosting"))]
-    bt = [{"method": m, **{k: _m("backtest", f"{k}_{m.replace('-', '_')}")
-                           for k in ("crps", "crps_after", "bias_after", "cov90",
-                                     "stint_mae", "n", "n_after")}}
-          for m in ("identified", "no-track", "conventional", "naive")]
+            for k, n in (("b1", "Naive"), ("b2", "Conventional"), ("b3", "Gradient boosting"),
+                         ("b4", "Published (race sim)"))]
+    def bt_methods(task):
+        return [{"method": m, **{k: _m(task, f"{k}_{m.replace('-', '_')}")
+                                 for k in ("crps", "crps_after", "bias_after", "cov90",
+                                           "stint_mae", "n", "n_after")}}
+                for m in ("identified", "fuel-only", "no-track", "conventional", "naive")]
+
+    bt = bt_methods("backtest")
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -110,6 +121,25 @@ def summary() -> dict:
                      "weekends": _m("backtest", "weekends"), "methods": bt,
                      "slope_mae": {k: _m("backtest", f"slope_mae_{k}")
                                    for k in ("identified", "conventional", "mean")}},
+        "backtest_lake": ({"gate": results.get("backtest_lake").get("gate"),
+                           "weekends": _m("backtest_lake", "weekends"),
+                           "methods": bt_methods("backtest_lake")}
+                          if results.get("backtest_lake") else None),
+        "fuel_gap": {t: {k: _m(t, k) for k in ("races", "mean_slope", "best",
+                                               "beta_f_fuel_only", "beta_f_fuel_only_sd",
+                                               "s_fuel_track", "s_fuel_track_sd",
+                                               "loo_mae_physics_only", "loo_mae_fuel_only",
+                                               "loo_mae_fuel_track", "loo_mae_mean")}
+                     | {"gate": results.get(t).get("gate")}
+                     for t in ("fuel_gap", "fuel_gap_lake") if results.get(t)},
+        "postrace": {t: results.get(t).get("metrics", {})
+                     for t in ("postrace", "postrace_lake") if results.get(t)},
+        "ablations": _table("ablations", "table"),
+        "parity": ({**results.get("parity").get("metrics", {}),
+                    "gate": results.get("parity").get("gate")} if results.get("parity") else None),
+        "headline_2026": ({**results.get("headline_2026").get("metrics", {}),
+                           "gate": results.get("headline_2026").get("gate")}
+                          if results.get("headline_2026") else None),
     }
 
 

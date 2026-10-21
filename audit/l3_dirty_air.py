@@ -69,15 +69,32 @@ def subset(d: ladder.Design, m: np.ndarray) -> ladder.Design:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--full", action="store_true")
+    ap.add_argument("--data", choices=("audit", "lake"), default="audit")
+    ap.add_argument("--new-only", action="store_true",
+                    help="lake weekends NOT in the original ten: out-of-sample confirmation")
     args = ap.parse_args()
     draws = 2000 if args.full else 800
+    task = "l3" if args.data == "audit" else ("l3_lake_new" if args.new_only else "l3_lake")
 
     print("=" * 76)
-    print(f"L3  DIRTY AIR AS A COVARIATE   ({draws} draws)")
+    print(f"L3  DIRTY AIR AS A COVARIATE   ({draws} draws, data: {args.data}"
+          f"{', new weekends only' if args.new_only else ''})")
     print("=" * 76)
 
-    races = pl.read_parquet(ROOT / "out" / "audit_race.parquet")
-    quali = pl.read_parquet(ROOT / "out" / "audit_quali.parquet")
+    from tyretrace.data import sources
+    src = sources.load(args.data)
+    races, quali = src["race"], src["quali"]
+    from tyretrace.backtest.fp_race import dry_weekends
+    dry = dry_weekends(races)
+    races = races.filter(pl.col("session_uid").str.slice(0, 7).is_in(list(dry)))
+    quali = quali.filter(pl.col("session_uid").str.slice(0, 7).is_in(list(dry)))
+    if args.new_only:
+        # The 2026-10-21 slope fix was motivated by analysis of the original
+        # ten weekends; confirming it must use weekends that analysis never saw.
+        seen = {u[:7] for u in sources.load("audit")["race"]["session_uid"].unique().to_list()}
+        keep = pl.col("session_uid").str.slice(0, 7).is_in(list(seen)).not_()
+        races, quali = races.filter(keep), quali.filter(keep)
+        print(f"   excluded the {len(seen)} original weekends")
     d = build(races, quali)
 
     in_wake = float(np.mean(d.dirty_air > np.exp(-1.0)))   # within ~2 s
@@ -158,7 +175,7 @@ def main() -> int:
     print()
 
     from tyretrace import results
-    results.record("l3", {
+    results.record(task, {
         "wake_s_per_lap": float(w.mean()),
         "crps_l2": scores["L2"]["crps"], "crps_l3": scores["L3"]["crps"],
         "cov90_l2": scores["L2"]["coverage_90"],

@@ -124,3 +124,38 @@ as a sensitivity, not assumed silently.
 
 **No change** to metrics, splits, baselines, ship gates, or the falsification conditions
 in §8.
+
+### 2026-10-21 — data source, fourth baseline, and two pre-registered methods
+
+**Data (§2, §7 T3).** F1's live-timing archive, which FastF1 reads, now answers
+401 Unauthorized. The original ten weekends stay as pulled (`out/audit_*`). Every
+weekend from 2023 onward now comes from OpenF1 into `out/lake/`, in the same
+canonical schema. Before any lake lap was used, `audit/d1_source_parity.py`
+compared the two sources on every shared session. The gate checks lap time,
+compound, fresh-set tyre age and per-lap age increments, plus long-run overlap.
+The one systematic difference is reported, not hidden: tyre age on USED sets reads
+about 4 laps lower in OpenF1 (a definitional difference; slopes are unaffected).
+**2018–2022 is not available**: OpenF1 starts in 2023, and Ergast carries no tyre
+data. The "190+ weekends" in §2 and §7 is therefore not met.
+
+**Baselines (§4).** Baseline 4, "one academic tyre-degradation model", is the
+race-simulation lap model after Heilmeier et al. (TUM): fuel mass times a fixed
+sensitivity plus a logarithmic tyre term per compound. Its exact equations must
+be checked against the paper before it is cited.
+
+**Pre-registered before the lake was pulled.** Two changes motivated by analysis
+of the original ten weekends, so their test must be on data those analyses did
+not see:
+
+1. *fuel-only*: the fuel effect is learned from earlier races, with no race
+   track-evolution term. Motivation: `audit/f1_fuel_gap.py` shows the race/quali
+   evolution scale is not identified once between-race scatter is allowed.
+2. *traffic-aware anchors*: the anchor laps' dirty air is removed and the
+   expected traffic of later laps is added. Both are learned from earlier races.
+   Motivation: `audit/p1_postrace.py` found anchor traffic to be the largest
+   systematic error.
+
+The lake backtest's gate judges *fuel-only* with traffic-aware anchors. The
+ten-weekend backtest keeps its original gate and its recorded FAIL.
+
+**No change** to metrics, splits, ship gates, or the falsification conditions in §8.

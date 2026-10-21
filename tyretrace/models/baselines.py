@@ -11,7 +11,8 @@ meaningless without anyone noticing.
   B1  naive          within-stint OLS of lap time on lap-in-run
   B2  conventional   subtract 0.030 s/kg x fuel, quadratic in tyre age
   B3  ML             gradient boosting, same inputs, no causal structure
-  B4  published      one academic model, reimplemented -- NOT YET BUILT
+  B4  published      race-simulation lap model after Heilmeier et al. (TUM):
+                     logarithmic tyre degradation + fuel mass x sensitivity
 
 Each is implemented the way a competent practitioner would actually run it,
 not as a straw man. In particular their predictive spread is the residual
@@ -189,8 +190,58 @@ def gbm(tr: Design, te: Design, seed: int = 0) -> np.ndarray:
     return np.sort(qs, axis=0)
 
 
+# --------------------------------------------------------------------------
+# B4 -- published: race-simulation lap-time model
+# --------------------------------------------------------------------------
+
+# k2 grid for the logarithmic curve; with k2 fixed the model is linear, so
+# each candidate is one least-squares fit and the best by residual wins.
+LOG_K2 = (0.02, 0.05, 0.1, 0.2, 0.35, 0.5, 0.75, 1.0, 1.5, 2.5)
+
+
+def published(tr: Design, te: Design, seed: int = 0,
+              s_per_kg: float = CONVENTIONAL_S_PER_KG) -> np.ndarray:
+    """Lap-time model of the TUM race simulation family.
+
+    Reimplemented after A. Heilmeier, M. Graf, M. Lienkamp, "A Race
+    Simulation for Strategy Decisions in Circuit Motorsports" (IEEE ITSC
+    2018) and the open-source TUMFTM race-simulation code: lap time is a base
+    pace, plus fuel mass times a fixed time-per-kg sensitivity, plus a tyre
+    term per compound. Of the tyre models that work offers, the logarithmic
+    one is used here,
+
+        t_tyre(age) = k1 * ln(k2 * age + 1)
+
+    because it differs most from the conventional quadratic (B2): it is
+    concave, fast early and flattening, where B2 can curve either way.
+    VERIFY the exact equations against the paper before citing them at
+    judging -- this follows the model family, not a line-by-line port.
+
+    k2 is shared within a weekend (grid search); k1 is fitted per weekend x
+    compound by least squares; levels per driver at each weekend.
+    """
+    resid_tr = tr.y - s_per_kg * _fuel_kg(tr)
+    n_dw = tr.n_driver * tr.n_weekend
+    n_wc = tr.n_weekend * tr.n_compound
+
+    def X(d: Design, k2: float) -> np.ndarray:
+        dw = _onehot(d.weekend * d.n_driver + d.driver, n_dw)
+        wc = _onehot(d.weekend * d.n_compound + d.compound, n_wc)
+        return np.column_stack([dw, wc * np.log(k2 * d.age + 1.0)[:, None]])
+
+    best = None
+    for k2 in LOG_K2:
+        coef, rsd = _ols(X(tr, k2), resid_tr)
+        if best is None or rsd < best[2]:
+            best = (k2, coef, rsd)
+    k2, coef, rsd = best
+    mean = X(te, k2) @ coef + s_per_kg * _fuel_kg(te)
+    return _gaussian_draws(mean, np.full(te.n, rsd), seed)
+
+
 BASELINES = {
     "B1 naive": naive,
     "B2 conventional": conventional,
     "B3 gradient boosting": gbm,
+    "B4 published": published,
 }

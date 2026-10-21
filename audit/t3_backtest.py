@@ -20,6 +20,7 @@ Run:  python audit/t3_backtest.py
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -31,6 +32,7 @@ sys.path.insert(0, str(ROOT))
 
 from tyretrace import artifacts, results  # noqa: E402
 from tyretrace.backtest import fp_race as B  # noqa: E402
+from tyretrace.data import sources  # noqa: E402
 from tyretrace.eval import metrics  # noqa: E402
 
 RULE = "-" * 78
@@ -56,25 +58,41 @@ def stint_mae(fc: B.Forecast) -> float:
     return float((g["pred"] - g["lap_time_s"]).abs().mean())
 
 
+# Which method the gate judges. On the original ten weekends it is the method
+# as first specified, and that FAIL stands as recorded. On the lake it is the
+# fuel-only method, pre-registered 2026-10-21 before the lake was pulled, so
+# its verdict is genuinely out of sample for every weekend beyond the ten.
+GATED = {"audit": "identified", "lake": "fuel-only"}
+
+
 def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data", choices=("audit", "lake"), default="audit")
+    ap.add_argument("--traffic", action="store_true",
+                    help="traffic-aware anchors (pre-registered for the lake run)")
+    args = ap.parse_args()
+    task = "backtest" if args.data == "audit" else "backtest_lake"
+    gated = GATED[args.data]
+
     print("=" * 78)
-    print("T3  FP -> RACE BACKTEST -- rolling origin, strictly causal")
+    print(f"T3  FP -> RACE BACKTEST -- rolling origin, strictly causal   (data: {args.data})")
     print("=" * 78)
 
-    out = ROOT / "out"
-    practice = pl.read_parquet(out / "audit_practice.parquet")
-    quali = pl.read_parquet(out / "audit_quali.parquet")
-    race_raw = pl.read_parquet(out / "audit_race.parquet")
+    d = sources.load(args.data)
+    practice, quali, race_raw = d["practice"], d["quali"], d["race"]
 
     prac, race = B.prepare(practice, race_raw)
     weekends = B.weekend_inputs(quali, race_raw)
-    keys = sorted(weekends)                       # "YYYY_RR" sorts chronologically
+    dry = B.dry_weekends(race_raw)               # wet races are not fuel/tyre running
+    keys = sorted(k for k in weekends if k in dry)   # "YYYY_RR" sorts chronologically
+    print(f"   {len(keys)} dry weekends ({len(weekends) - len(keys)} wet or mixed excluded)")
 
     # each race's own fused coefficient -- used ONLY by later weekends
     rc = {k: B.race_lap_coef(race.filter(pl.col("weekend") == k)) for k in keys}
     rd = {k: B.race_degradation(race.filter(pl.col("weekend") == k)) for k in keys}
+    tf = B.traffic_history(race, keys) if args.traffic else {}
 
-    per_wk, pred_tabs, ft_rows = [], [], []
+    per_wk, pred_tabs, ft_rows, params = [], [], [], []
     pooled: dict[str, list] = {m: [] for m in B.METHODS}
     for i, k in enumerate(keys):
         if i < B.MIN_EARLIER:
@@ -85,9 +103,13 @@ def main() -> int:
                               [weekends[e] for e in earlier])
         sigma = float(np.median([rc[e][2] for e in earlier]))
         prior = B.degradation_prior([rd[e] for e in earlier])
+        fo = B.fit_fuel_only([rc[e][0] for e in earlier], [rc[e][1] for e in earlier],
+                             [weekends[e] for e in earlier])
         fcs = B.run_weekend(wk, prac.filter(pl.col("weekend") == k),
                             race.filter(pl.col("weekend") == k), ft, sigma, seed=i,
-                            prior=prior)
+                            prior=prior, fuel_only=fo,
+                            traffic=B.traffic_prior([tf[e] for e in earlier if e in tf])
+                            if args.traffic else None)
 
         f, f_sd = ft.fuel_pace(wk)
         fb = [c for c, v in next(iter(fcs.values())).deg.items() if v[2] == "prior"]
@@ -108,6 +130,11 @@ def main() -> int:
               + f"   deg prior {prior[0]:.3f}+/-{prior[1]:.3f}"
               + (f"   no practice: {', '.join(fb)}" if fb else ""))
         for m, fc in fcs.items():
+            # the point parameters each method forecast with -- what the
+            # post-race decomposition (audit/p1_postrace.py) explains errors by
+            params += [{"weekend": k, "method": m, "lap_coef": fc.lap_coef[0],
+                        "compound": c, "deg": v[0], "deg_sd": v[1], "deg_source": v[2]}
+                       for c, v in fc.deg.items()]
             after = fc.laps["after_stop"].to_numpy()
             a, b = score(fc), score(fc, after)
             per_wk.append({"weekend": k, "method": m, "crps": a["crps"], "mae": a["mae"],
@@ -162,10 +189,11 @@ def main() -> int:
           f"{summary['identified']['n_after']} after a stop · stint = per-stint pace MAE, s/lap")
     print()
 
-    idf, conv, nai = (summary[m]["crps_after"] for m in ("identified", "conventional", "naive"))
+    idf, conv, nai = (summary[m]["crps_after"] for m in (gated, "conventional", "naive"))
     ok = idf < conv and idf < nai
-    print(f"   after a stop, identified vs conventional: CRPS {100*(1-idf/conv):+.1f}%")
-    print(f"   after a stop, identified vs naive:        CRPS {100*(1-idf/nai):+.1f}%")
+    print(f"   gate judges: {gated}")
+    print(f"   after a stop, {gated} vs conventional: CRPS {100*(1-idf/conv):+.1f}%")
+    print(f"   after a stop, {gated} vs naive:        CRPS {100*(1-idf/nai):+.1f}%")
     trk = summary["no-track"]["crps_after"]
     print(f"   ablation -- dropping track evolution:      CRPS {100*(trk/idf-1):+.1f}% worse"
           if trk >= idf else
@@ -187,17 +215,19 @@ def main() -> int:
     print("   out-of-sample evidence on the README's open fuel-pace gap.")
     print()
 
-    artifacts.save("backtest", "predictive", pl.concat(pred_tabs))
-    artifacts.save("backtest", "weekends", pl.DataFrame(per_wk))
-    artifacts.save("backtest", "fuel_track", ftab)
-    results.record("backtest", {
+    artifacts.save(task, "predictive", pl.concat(pred_tabs))
+    artifacts.save(task, "weekends", pl.DataFrame(per_wk))
+    artifacts.save(task, "fuel_track", ftab)
+    artifacts.save(task, "params", pl.DataFrame(params))
+    results.record(task, {
+        "gated_method": gated, "traffic_anchor": bool(args.traffic),
         **{f"{k}_{m.replace('-', '_')}": v for m, s in summary.items() for k, v in s.items()},
         "weekends": n_w,
         **{f"slope_mae_{k.split()[0]}": v for k, v in slope_mae.items()},
     }, gate="PASS" if ok else "FAIL")
 
     print("=" * 78)
-    print(f"BACKTEST GATE: {'PASS' if ok else 'FAIL'} -- identified "
+    print(f"BACKTEST GATE: {'PASS' if ok else 'FAIL'} -- {gated} "
           f"{'beats' if ok else 'does NOT beat'} conventional and naive after pit stops")
     print("=" * 78)
     return 0 if ok else 1

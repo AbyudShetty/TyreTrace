@@ -4,57 +4,52 @@ Where the project stands against the four-phase plan in the idea submission, and
 the order the rest gets built in. Estimates are person-days; double them for
 calendar time on a part-time student schedule.
 
-## Status
+## Status (2026-10-21)
 
 | Phase | State |
 |---|---|
 | 0 Feasibility audit | done — gates, protocol, schema, runner |
-| 1 Data lake | partial — 10 weekends (2023–25); no C1–C5 map; no per-corner telemetry |
-| 2 Identification | mostly done — L0–L3 built; L4 best CRPS but under-covers (0.813) |
-| 3 Regimes & proof | Tier 1 done; Tier 2 rig on fake packets only; no backtest, baselines, ablations |
-| 4 Planner & UI | dashboard done (2026-10-14); run planner v1 done (2026-10-15); post-race tool not started |
-| Baselines | 3 of 4 done (2026-10-15): naive, conventional, gradient boosting. Published model not built |
+| 1 Data lake | done for 2023→today via OpenF1 (FastF1's source now returns 401); parity-checked against FastF1. 2018–2022 unavailable (no public tyre data). No C1–C5 map; no per-corner telemetry |
+| 2 Identification | done — fuel-pace gap explained (L2 overstated race track evolution ~2.5×); fuel 0.0324 ± 0.0011 s/kg on 71 races; L2–L6 refitted with per-weekend slope scatter |
+| 3 Proof | Tier 1 done; Tier 2 rig on fake packets only; Tier 3 backtest done on 10 weekends + lake; all 4 baselines; ablations done; 2026 headline built |
+| 4 Planner & UI | run planner v1 done; post-race validation done (backend); React dashboard phase 1 done, phase 2 + redesign pending |
 
-## Critical path
-
-**Calibration.** No rung ships, because every rung's 90% intervals cover too few
-laps. The backtest, the ablations and the planner all need a calibrated model
-underneath, so this goes first.
-
-## Work list, in order
+## What is left
 
 | # | Work | Days | Notes |
 |---|---|---|---|
-| ✅ | Runner bug (`calib` vs `l4`), artifacts layer, dashboard | — | done 2026-10-14 |
-| ✅ | Baselines B1–B3 + audit + dashboard; L4 reports r_hat | — | done 2026-10-15 |
-| 1 | Live rig `--self-check` against the F1 game | 1–3 | needs the game; fix offsets, never loosen the check |
-| 2 | Calibration: model the MEAN on old tyres | 2–4 | L4's misses are one-sided (12% above q95, 7% below q05; 16% above at age 26–30). **Tried and rejected 2026-10-15:** a clean/compromised-lap mixture (L6, three variants — all cover worse, 0.76 vs 0.81; age effect came out negative). So it is not lap-level noise. Next: degradation curvature / per-stint cliff in the mean |
-| 2b | L3–L5 convergence | 1–2 | r_hat 1.05–1.10, ESS ~25 on beta_f / stint offsets / deg. **Not** circuit centring (tried 2026-10-15, no help). It is the stint-offset vs fuel trade-off the README warns about. Forecasts are stable across runs (cov 0.812/0.813/0.813); fuel estimates from L3+ are not — quote L2's |
-| 3 | Regime / HMM model | 8–15 | now the lead candidate for #2 — warm-up and cliff as states with their own mean, not just their own noise |
-| 4 | Full 2018–2026 pull + Pirelli C1–C5 map | 3–6 | unlocks cross-race compound pooling |
-| 5 | **Fuel-pace gap — now the top science item** | 2–4 | the backtest shows out of sample that the race-identified fuel effect is biased low (slope bias +0.007 s/lap). Suspects: late-race management / derate, stint effects absorbing the pit discontinuity, kappa (full tank / laps) overstated. Fixing it is what would flip the T3 gate |
-| 6 | Published-model baseline (B4) | 2–4 | B1–B3 done. Result so far: L4 beats all three on CRPS, but conventional (0.371) beats L2 (0.381) — same-race forecasting can't test the fuel split; #7 can |
-| ✅ 7 | Tier 3 rolling-origin backtest, FP → race | — | done 2026-10-17 on the 10 cached weekends (7 evaluated). Gate FAIL, recorded as a finding: identified beats naive by 63% after stops, trails fixed 0.030 s/kg by 3.9% because the race-learned fuel effect is too small. Closed-form, 14 s. Extends to 190+ weekends once #4's data is pulled |
-| 8 | Ablation table (protocol §6) | 2–3 | mostly compute |
-| 9 | 2026 headline evaluation | 1–2 | the sample-efficiency claim |
-| ✅ 10 | Run planner v1 (expected information gain) | — | done 2026-10-15: exact linear-Gaussian EIG, beam + local search, dashboard page. Fair result: +0% without tyre changes (rediscovers the standard programme), **+21% with one mid-run tyre change**. v2: cliff/regimes, tyre allocation, two cars |
-| 11 | Post-race validation view | 3–5 | residual split: fuel / traffic / track / model miss |
-| 12 | Demo script, video, write-up | 2–3 | |
+| 1 | **Calibration at scale — the main open problem** | 3–5 | L3 ships on the 10 weekends but NOT on 61 new ones (coverage 0.797). Rejected so far: compromised-lap mixture (L6), rolling recalibration (CRPS +8.8%). Most error is weekend-level, not lap noise |
+| 2 | **Degradation from practice** | 3–5 | the largest forecast error on 68 weekends (rms 0.92 s vs slope 0.50, traffic 0.34) — better practice-slope estimation is where race forecasting improves next |
+| 3 | Live rig `--self-check` against the F1 game | 1–3 | needs the game; fix offsets, never loosen the check |
+| 4 | Regime / HMM model | 8–15 | warm-up and cliff as states; time-box |
+| 5 | Pirelli C1–C5 compound map | 1–2 | unlocks pooling SOFT/MEDIUM/HARD across weekends |
+| 6 | Dashboard phase 2 + redesign | 4–6 | six pages; wire in fuel gap, post-race, ablations, lake, 2026 |
+| 7 | Demo script, video, write-up | 2–3 | |
 | — | Per-corner telemetry features | 8–12 | **cut** — future-work slide |
 
-Lean total ≈ 30 person-days ≈ 3–4 weeks for three people.
+## Done
 
-## Parallel tracks
-
-```
-           Week 1               Week 2                 Week 3                Week 4
-Track A    #2 calibration  ──►  #3 HMM if needed  ──►  #10 planner v1        polish
-Track B    #4 data, #6 base ──► #7 backtest       ──►  #8 ablations, #9      polish
-Track C    #1 rig live      ──► #11 post-race view ──► wire into dashboard   #12 demo
-```
+| Work | Date | Result |
+|---|---|---|
+| Runner bug, artifacts layer, Streamlit dashboard | 2026-10-14 | |
+| Baselines B1–B3, r_hat reporting | 2026-10-15 | |
+| Run planner v1 | 2026-10-15 | +21% information with one mid-run tyre change; +0% without (rediscovers the standard programme) |
+| Tier 3 backtest | 2026-10-17 | FAIL on 10 weekends, recorded as a finding |
+| React dashboard phase 1 | 2026-10-17 | overview, explainer, live planner |
+| Fuel-pace gap | 2026-10-21 | fuel alone 0.0293 ± 0.0024 s/kg = physics; s not identified once scatter is allowed |
+| B4 published baseline | 2026-10-21 | CRPS 0.350 vs L4 0.344 — strongest baseline |
+| Post-race validation | 2026-10-21 | exact split into slope / tyres / traffic / noise; traffic at the anchor the largest systematic error |
+| Traffic-aware anchors | 2026-10-21 | identified CRPS 0.589 → 0.569, bias +0.19 → +0.06 s |
+| Ablation table | 2026-10-21 | every built component earns its place |
+| Data lake via OpenF1 + parity audit | 2026-10-21 | PASS; used-set tyre age offset documented |
+| 2026 headline audit | 2026-10-21 | gate flips with the unverified 2026 fuel load; identified best under 70 kg (−8%); 2026 race slopes contradict 70 kg at unchanged sensitivity |
+| Lake backtest (pre-registered) | 2026-10-21 | FAIL: fuel-corrected methods statistically tied on 68 weekends; all beat naive (t −9.6) |
+| Out-of-sample L3 check | 2026-10-21 | the 10-weekend ship does not replicate on 61 new weekends |
 
 ## Rules that don't change
 
 - `eval/protocol.md` is frozen. Changes go in a dated amendment, never a silent edit.
 - A rung ships only on better CRPS **and** coverage in [0.85, 0.95].
 - Audits write to `out/`; the dashboard only reads it.
+- A method chosen after seeing results is tested on data it has not seen
+  (fuel-only and traffic-aware anchors were pre-registered before the lake).

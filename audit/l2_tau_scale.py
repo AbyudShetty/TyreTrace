@@ -67,7 +67,10 @@ def build(races_raw: pl.DataFrame, quali: pl.DataFrame) -> ladder.Design:
     races = races.filter(pl.col("weekend").is_in(list(tau_by_weekend)))
 
     d = ladder.build_design(races)
-    d.kappa = (FULL_TANK_KG / races["race_laps"].to_numpy()).astype(np.float64)
+    # full tank by regulation era (2026 runs far lighter) -- see fp_race.full_tank
+    from tyretrace.backtest.fp_race import full_tank
+    tank = np.array([full_tank(int(u[:4])) for u in races["session_uid"].to_list()])
+    d.kappa = (tank / races["race_laps"].to_numpy()).astype(np.float64)
     wk = races["weekend"].to_numpy().astype(str)
     d.tau_quali = np.array([tau_by_weekend[w] for w in wk], dtype=np.float64)
 

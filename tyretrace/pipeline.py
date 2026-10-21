@@ -48,7 +48,13 @@ class Task:
     # real regression visible instead of hiding in a wall of red.
     expect: str = "PASS"
     expect_why: str = ""
+    # Optional tasks need data a fresh clone may not have (the lake). Missing
+    # inputs SKIP them quietly instead of failing the run.
+    optional: bool = False
+    pull_hint: str = "python -m tyretrace run pull"
 
+
+LAKE_INPUTS = ("out/lake/race.parquet", "out/lake/quali.parquet", "out/lake/practice.parquet")
 
 TASKS: dict[str, Task] = {t.name: t for t in [
     Task("pull", "audit/a1_a2_identification.py",
@@ -89,15 +95,16 @@ TASKS: dict[str, Task] = {t.name: t for t in [
     Task("l3", "audit/l3_dirty_air.py",
          "L3: dirty air covariate and its ship gate against L2",
          deps=("l2",), inputs=("out/audit_race.parquet",), minutes=3.0,
-         expect="HOLD",
-         expect_why="improves CRPS but coverage 0.849 is below the 0.85 band"),
+         expect="SHIP",
+         expect_why="since the per-weekend slope fix (2026-10-21): CRPS -4.0% vs L2, "
+                    "coverage 0.858 -- the first rung to ship"),
 
     Task("l4", "audit/l4_calibration.py",
          "L4/L5: calibration -- stint offsets, heavy tails, variance model",
          deps=("l3",), inputs=("out/audit_race.parquet",), minutes=8.0,
-         expect="HOLD",
-         expect_why="L4 has the best CRPS but covers 0.813; L5 rejected, "
-                    "sigma(age) is U-shaped not monotone"),
+         expect="SHIP",
+         expect_why="L3 ships (coverage 0.858); L4 does not (0.807, r_hat 1.10); "
+                    "L5 rejected, sigma(age) is U-shaped not monotone"),
 
     Task("baselines", "audit/b1_baselines.py",
          "Protocol baselines (naive, conventional, GBM) on the ladder's split",
@@ -112,6 +119,65 @@ TASKS: dict[str, Task] = {t.name: t for t in [
          expect_why="beats naive by 63% after stops, but the fixed 0.030 s/kg "
                     "beats the race-learned fuel effect by 3.9% -- evidence the "
                     "race identification of fuel is biased low"),
+
+    Task("fuel_gap", "audit/f1_fuel_gap.py",
+         "Fuel-pace gap: is the missing race slope fuel or track?",
+         deps=("a1b",), minutes=0.2,
+         inputs=("out/audit_race.parquet", "out/audit_quali.parquet")),
+
+    Task("postrace", "audit/p1_postrace.py",
+         "Post-race validation: forecast error split by cause",
+         deps=("backtest",), minutes=0.3,
+         inputs=("out/audit_race.parquet",)),
+
+    Task("ablations", "audit/a6_ablations.py",
+         "Ablation table: every component removed one at a time",
+         deps=("backtest", "l4", "ladder"), minutes=0.5,
+         inputs=("out/audit_race.parquet", "out/audit_quali.parquet",
+                 "out/audit_practice.parquet")),
+
+    # ---- the lake: every weekend since 2023, via OpenF1 ----------------------
+    Task("lake", "audit/d0_lake_pull.py",
+         "Pull every weekend since 2023 from OpenF1 (resumable)",
+         network=True, minutes=55.0, outputs=("out/lake/race.parquet", "out/lake/quali.parquet", "out/lake/practice.parquet")),
+
+    Task("parity", "audit/d1_source_parity.py",
+         "Source parity: FastF1 vs OpenF1 on every shared session",
+         inputs=("out/lake/race.parquet", "out/lake/quali.parquet", "out/lake/practice.parquet"), optional=True, minutes=0.5,
+         pull_hint="python -m tyretrace run lake"),
+
+    Task("backtest_lake", "audit/t3_backtest.py",
+         "Tier 3 on every lake weekend; gate on pre-registered fuel-only",
+         deps=("parity",), inputs=("out/lake/race.parquet", "out/lake/quali.parquet", "out/lake/practice.parquet"), optional=True, minutes=2.0,
+         args=("--data", "lake", "--traffic"), pull_hint="python -m tyretrace run lake",
+         expect="FAIL",
+         expect_why='pre-registered fuel-only does not beat conventional on 68 dry weekends; fuel-corrected methods tie (paired t < 2), all beat naive (t -9.6)'),
+
+    Task("fuel_gap_lake", "audit/f1_fuel_gap.py",
+         "Fuel-pace gap on every lake race",
+         deps=("parity",), inputs=("out/lake/race.parquet", "out/lake/quali.parquet", "out/lake/practice.parquet"), optional=True, minutes=0.5,
+         args=("--data", "lake"), pull_hint="python -m tyretrace run lake",
+         expect="FAIL",
+         expect_why='on 71 dry races a small race track evolution (s 0.35 +/- 0.14) earns its place; fuel 0.027 s/kg with it, 0.032 without -- gap largely closed'),
+
+    Task("postrace_lake", "audit/p1_postrace.py",
+         "Post-race validation on every lake weekend",
+         deps=("backtest_lake",), inputs=("out/lake/race.parquet", "out/lake/quali.parquet", "out/lake/practice.parquet"), optional=True, minutes=1.0,
+         args=("--data", "lake"), pull_hint="python -m tyretrace run lake"),
+
+    Task("l3_lake_new", "audit/l3_dirty_air.py",
+         "L3 ship gate on lake weekends the slope fix never saw",
+         deps=("parity",), inputs=LAKE_INPUTS, optional=True, minutes=15.0,
+         args=("--data", "lake", "--new-only"), pull_hint="python -m tyretrace run lake",
+         expect="HOLD",
+         expect_why="the 10-weekend L3 ship does not replicate on 61 new weekends: coverage 0.797, CRPS 0.626 vs L2 0.624"),
+
+    Task("headline_2026", "audit/h1_2026.py",
+         "2026 headline: every 2026 race from its practice, both fuel loads",
+         deps=("parity",), inputs=("out/lake/race.parquet", "out/lake/quali.parquet", "out/lake/practice.parquet"), optional=True, minutes=1.0,
+         pull_hint="python -m tyretrace run lake",
+         expect="FAIL",
+         expect_why='verdict flips with the unverified 2026 fuel load; identified best under 70 kg (-8%) and most robust; 2026 race slopes contradict 70 kg'),
 ]}
 
 # everything runnable without touching the network
@@ -231,8 +297,9 @@ def cmd_run(args) -> int:
         miss = missing_inputs(t)
         if miss:
             print(f"  SKIP  {t.name:<8s} needs {', '.join(miss)}")
-            print(f"        run:  python -m tyretrace run pull\n")
-            failed.append(t.name)
+            print(f"        run:  {t.pull_hint}\n")
+            if not t.optional:
+                failed.append(t.name)
             continue
         if not should_run:
             gate = results.get(t.name).get("gate", "?")

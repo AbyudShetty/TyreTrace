@@ -281,6 +281,36 @@ def diagnostics(mcmc: MCMC) -> dict:
 
 
 # --------------------------------------------------------------------------
+# the race lap slope, shared by every rung from L2 up
+# --------------------------------------------------------------------------
+
+def _lap_coef(d: Design):
+    """Per-row race lap coefficient: fuel burn and race track evolution, with
+    a per-weekend deviation from the cross-circuit relationship.
+
+        lap_coef_w = -(beta_f * kappa_w + s * tau_quali_w) + slope_sd * z_w
+
+    The deviation term was added 2026-10-21. Without it every weekend's slope
+    had to equal the formula EXACTLY, so ten weekends' tiny within-race
+    standard errors pinned s as if the relationship held perfectly across
+    circuits: s = 0.87 [0.79, 0.96]. audit/f1_fuel_gap.py found that with
+    between-race scatter allowed, s is not identified (0.33 +/- 0.55) and the
+    fuel effect alone (0.029 s/kg -- physics) predicts unseen race slopes
+    best. Whatever s takes, it is subtracted from fuel, so the overconfident
+    s was the whole fuel-pace gap.
+
+    Non-centred, so the sampler is not caught in the funnel when the data
+    pull slope_sd toward zero.
+    """
+    beta_f = numpyro.sample("beta_f", dist.Normal(0.033, 0.020))
+    s = numpyro.sample("tau_scale", dist.Normal(0.5, 0.5))
+    slope_sd = numpyro.sample("slope_sd", dist.HalfNormal(0.02))
+    z = numpyro.sample("z_slope", dist.Normal(0, 1).expand([d.n_weekend]).to_event(1))
+    return numpyro.deterministic(
+        "lap_coef_row", -(beta_f * d.kappa + s * d.tau_quali) + slope_sd * z[d.weekend])
+
+
+# --------------------------------------------------------------------------
 # L2 -- split the fused coefficient using cross-circuit variation
 # --------------------------------------------------------------------------
 
@@ -316,11 +346,7 @@ def model_l2(d: Design, y=None):
 
     # weakly informative around the paddock convention, wide enough to be
     # overruled by data -- this must not become the assumption it replaces
-    beta_f = numpyro.sample("beta_f", dist.Normal(0.033, 0.020))
-    s = numpyro.sample("tau_scale", dist.Normal(0.5, 0.5))
-
-    lap_coef = numpyro.deterministic(
-        "lap_coef_row", -(beta_f * d.kappa + s * d.tau_quali))
+    lap_coef = _lap_coef(d)
 
     # Degradation per weekend x compound, with NO pooling across weekends:
     # relative labels are not comparable between races ("SOFT" is three
@@ -369,10 +395,7 @@ def model_l3(d: Design, y=None):
     z_drv = numpyro.sample("z_driver", dist.ZeroSumNormal(1.0, (d.n_driver,)))
     drv = numpyro.deterministic("driver_off", sd_drv * z_drv)
 
-    beta_f = numpyro.sample("beta_f", dist.Normal(0.033, 0.020))
-    s = numpyro.sample("tau_scale", dist.Normal(0.5, 0.5))
-    lap_coef = numpyro.deterministic(
-        "lap_coef_row", -(beta_f * d.kappa + s * d.tau_quali))
+    lap_coef = _lap_coef(d)
 
     # positive: sitting in another car's wake costs time
     wake = numpyro.sample("wake_s", dist.Normal(0.5, 0.5))
@@ -455,10 +478,7 @@ def model_l4(d: Design, y=None):
     z_stint = z_raw - (csum / jnp.maximum(ccount, 1.0))[d.stint_circuit]
     stint_off = numpyro.deterministic("stint_off", sd_stint * z_stint)
 
-    beta_f = numpyro.sample("beta_f", dist.Normal(0.033, 0.020))
-    s = numpyro.sample("tau_scale", dist.Normal(0.5, 0.5))
-    lap_coef = numpyro.deterministic(
-        "lap_coef_row", -(beta_f * d.kappa + s * d.tau_quali))
+    lap_coef = _lap_coef(d)
 
     wake = numpyro.sample("wake_s", dist.Normal(0.5, 0.5))
 
@@ -554,10 +574,7 @@ def model_l5(d: Design, y=None):
     z_stint = z_raw - (csum / jnp.maximum(ccount, 1.0))[d.stint_circuit]
     stint_off = numpyro.deterministic("stint_off", sd_stint * z_stint)
 
-    beta_f = numpyro.sample("beta_f", dist.Normal(0.033, 0.020))
-    s = numpyro.sample("tau_scale", dist.Normal(0.5, 0.5))
-    lap_coef = numpyro.deterministic(
-        "lap_coef_row", -(beta_f * d.kappa + s * d.tau_quali))
+    lap_coef = _lap_coef(d)
 
     wake = numpyro.sample("wake_s", dist.Normal(0.5, 0.5))
     deg = numpyro.sample(
@@ -602,10 +619,7 @@ def _l4_mean(d: Design):
     z_stint = z_raw - (csum / jnp.maximum(ccount, 1.0))[d.stint_circuit]
     stint_off = numpyro.deterministic("stint_off", sd_stint * z_stint)
 
-    beta_f = numpyro.sample("beta_f", dist.Normal(0.033, 0.020))
-    s = numpyro.sample("tau_scale", dist.Normal(0.5, 0.5))
-    lap_coef = numpyro.deterministic(
-        "lap_coef_row", -(beta_f * d.kappa + s * d.tau_quali))
+    lap_coef = _lap_coef(d)
 
     wake = numpyro.sample("wake_s", dist.Normal(0.5, 0.5))
     deg = numpyro.sample(

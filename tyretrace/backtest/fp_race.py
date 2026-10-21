@@ -29,6 +29,8 @@ strictly causal, no global fit.
 THE METHODS (all share practice slopes, anchors, noise and scoring)
 -------------------------------------------------------------------
     identified     fuel pace and race/quali scale s learned from earlier races
+    fuel-only      fuel learned from earlier races, no race track term
+                   (pre-registered 2026-10-21 after audit/f1_fuel_gap.py)
     no-track       identified fuel, track evolution ignored  (ablation, sec. 6)
     conventional   fuel = 0.030 s/kg x kappa, no track term   (protocol sec. 4)
     naive          no fuel correction; the practice slope IS degradation
@@ -56,6 +58,17 @@ from tyretrace.data import fastf1_pull as fp
 from tyretrace.models import track_evolution as te
 
 FULL_TANK_KG = 110.0
+
+# Race fuel load by regulation era. 2026's power units run on a fuel-ENERGY
+# flow limit and the cars start with far less fuel; ~70 kg is the widely
+# reported figure. It is NOT verified here, which is why audit/h1_2026.py
+# reports every 2026 result under both values instead of trusting one.
+TANK_BY_ERA = {2026: 70.0}
+
+
+def full_tank(year: int, override: dict[int, float] | None = None) -> float:
+    table = {**TANK_BY_ERA, **(override or {})}
+    return table.get(year, FULL_TANK_KG)
 CONVENTIONAL_S_PER_KG = 0.030
 ANCHOR_LAPS = 5
 FALLBACK_SD = 0.03            # s/lap, extra sd for a compound practice never ran
@@ -66,7 +79,7 @@ MIN_EARLIER = 3               # earlier races needed to learn fuel and s
 PRIOR_BETA_F = (0.033, 0.020)     # s/kg
 PRIOR_S = (0.5, 0.5)              # race / quali track-evolution scale
 
-METHODS = ("identified", "no-track", "conventional", "naive")
+METHODS = ("identified", "fuel-only", "no-track", "conventional", "naive")
 
 
 def _ols(X: np.ndarray, y: np.ndarray):
@@ -101,8 +114,32 @@ class Weekend:
         return self.tau_min * self.lap_s / 60.0
 
 
-def weekend_inputs(quali: pl.DataFrame, race_raw: pl.DataFrame) -> dict[str, Weekend]:
-    """Pre-race facts for every weekend that has a qualifying fit."""
+WET = ("INTERMEDIATE", "WET")
+
+
+def dry_weekends(race_raw: pl.DataFrame) -> set[str]:
+    """Weekends whose race ran with no intermediate or wet tyre at all.
+
+    On a wet or drying track, lap times fall for reasons that are neither
+    fuel nor tyre wear -- measured on the lake: 2025 Spa (wet start, then
+    drying) gave a race slope of -1.37 s/lap against a typical -0.05, and
+    four such races took the cross-race scatter from 0.017 to 0.152 s/lap.
+    Every model here is a dry-running model, so wet races are excluded from
+    history and from scoring alike. All ten original weekends are dry, so
+    this changes nothing on them.
+    """
+    wet = (race_raw.filter(pl.col("compound_rel").cast(pl.Utf8).is_in(WET))
+                   ["session_uid"].str.slice(0, 7).unique().to_list())
+    every = race_raw["session_uid"].str.slice(0, 7).unique().to_list()
+    return set(every) - set(wet)
+
+
+def weekend_inputs(quali: pl.DataFrame, race_raw: pl.DataFrame,
+                   tank: dict[int, float] | None = None) -> dict[str, Weekend]:
+    """Pre-race facts for every weekend that has a qualifying fit.
+
+    `tank` overrides the full-tank mass by year, e.g. {2026: 110.0} to run
+    2026 as if the fuel regulations had not changed."""
     out = {}
     laps = dict(race_raw.group_by("session_uid")
                         .agg(pl.col("lap_in_session").max()).iter_rows())
@@ -114,7 +151,7 @@ def weekend_inputs(quali: pl.DataFrame, race_raw: pl.DataFrame) -> dict[str, Wee
         n = laps.get(f"{wk}_R")
         if n:
             out[wk] = Weekend(wk, f.tau_per_min, float(lap_s[f.session_uid]),
-                              FULL_TANK_KG / float(n))
+                              full_tank(int(wk[:4]), tank) / float(n))
     return out
 
 
@@ -130,7 +167,8 @@ def _run_slope(lap: np.ndarray, y: np.ndarray) -> tuple[float, float] | None:
     return float(coef[1]), float(np.sqrt(max(cov[1, 1], 1e-8)))
 
 
-def random_effects(est: np.ndarray, se: np.ndarray) -> tuple[float, float]:
+def random_effects(est: np.ndarray, se: np.ndarray,
+                   between: bool = True) -> tuple[float, float]:
     """DerSimonian-Laird pooled mean and its se.
 
     Runs differ for reasons beyond lap noise -- a push-then-cool run, a mode
@@ -143,6 +181,8 @@ def random_effects(est: np.ndarray, se: np.ndarray) -> tuple[float, float]:
     m = float(np.sum(w * est) / np.sum(w))
     if len(est) < 2:
         return m, float(np.sqrt(1.0 / np.sum(w)))
+    if not between:                    # fixed-effect pooling: the ablation
+        return m, float(np.sqrt(1.0 / np.sum(w)))
     q = float(np.sum(w * np.square(est - m)))
     c = float(np.sum(w) - np.sum(np.square(w)) / np.sum(w))
     tau2 = max((q - (len(est) - 1)) / c, 0.0) if c > 0 else 0.0
@@ -150,7 +190,8 @@ def random_effects(est: np.ndarray, se: np.ndarray) -> tuple[float, float]:
     return float(np.sum(w2 * est) / np.sum(w2)), float(np.sqrt(1.0 / np.sum(w2)))
 
 
-def practice_slopes(prac_lr: pl.DataFrame) -> dict[str, tuple[float, float, int]]:
+def practice_slopes(prac_lr: pl.DataFrame,
+                    between: bool = True) -> dict[str, tuple[float, float, int]]:
     """Fused within-run slope per compound: one slope per run, pooled.
 
     Only within-run variation counts. Between runs, fuel load trends with the
@@ -170,7 +211,7 @@ def practice_slopes(prac_lr: pl.DataFrame) -> dict[str, tuple[float, float, int]
                 est.append(fit[0])
                 se.append(fit[1])
         if est:
-            m, sd = random_effects(np.array(est), np.array(se))
+            m, sd = random_effects(np.array(est), np.array(se), between)
             out[str(comp[0])] = (m, sd, len(est))
     return out
 
@@ -236,6 +277,33 @@ class FuelTrack:
 
     def fuel_pace(self, wk: Weekend) -> tuple[float, float]:
         return self.beta_f * wk.kappa, float(np.sqrt(self.cov[0, 0])) * wk.kappa
+
+
+def fit_fuel_only(coefs, ses, weekends: list[Weekend]) -> tuple[float, float]:
+    """beta_f from earlier races' slopes with NO race track term:
+
+        lap_coef_w = -beta_f * kappa_w + e_w
+
+    Pre-registered 2026-10-21 for the lake backtest, BEFORE the new weekends
+    were pulled, on the strength of audit/f1_fuel_gap.py: once between-race
+    scatter is allowed, the race/quali scale s is not identified
+    (0.33 +/- 0.55 on ten races) and fuel alone predicts unseen race slopes
+    better. Returns (beta_f, sd) in s/kg.
+    """
+    y = np.asarray(coefs, dtype=float)
+    se2 = np.square(ses)
+    x = -np.array([w.kappa for w in weekends])
+    p0 = PRIOR_BETA_F[1] ** -2
+    eta2, m, v = 0.0, PRIOR_BETA_F[0], PRIOR_BETA_F[1] ** 2
+    for _ in range(50):
+        w = 1.0 / (se2 + eta2)
+        v = 1.0 / (p0 + np.sum(w * x * x))
+        m = v * (p0 * PRIOR_BETA_F[0] + np.sum(w * x * y))
+        new = max(float(np.mean(np.square(y - x * m) - se2)), 0.0)
+        if abs(new - eta2) < 1e-14:
+            break
+        eta2 = new
+    return float(m), float(np.sqrt(v))
 
 
 def fit_fuel_track(coefs, ses, weekends: list[Weekend]) -> FuelTrack:
@@ -319,12 +387,22 @@ def degradation(slopes: dict, fuel_pace: tuple[float, float],
 
 
 def forecast(race_lr: pl.DataFrame, deg: dict, lap_coef: tuple[float, float],
-             sigma: float, seed: int = 0) -> Forecast | None:
+             sigma: float, seed: int = 0,
+             traffic: tuple[float, float] | None = None) -> Forecast | None:
     """Anchor each driver on their first ANCHOR_LAPS green laps, forecast the rest.
 
     Parameter uncertainty is propagated by drawing the lap coefficient and
     every compound's degradation jointly per draw, re-solving each driver's
     anchor level under that draw, then adding lap noise.
+
+    `traffic = (wake, expected_dirty_air)`, both learned from EARLIER races:
+    the anchor laps' own dirty air is removed from the pace level, and the
+    expected dirty air of a later lap is added back. The post-race
+    decomposition (audit/p1_postrace.py) found the early-race anchor laps
+    sit in traffic, leaving every forecast +0.11 s too slow for every method.
+    Future gaps are unknown before the race, so the forecast carries their
+    expectation, not the realised value. Pre-registered 2026-10-21, before
+    the lake was pulled.
     """
     rng = np.random.default_rng(seed)
     df = race_lr.sort("driver", "lap_in_session")
@@ -351,6 +429,8 @@ def forecast(race_lr: pl.DataFrame, deg: dict, lap_coef: tuple[float, float],
 
     a_part = mean_part(anchor)
     a_resid = anchor["lap_time_s"].to_numpy()[None, :] - a_part
+    if traffic is not None and "dirty_air" in anchor.columns:
+        a_resid = a_resid - traffic[0] * anchor["dirty_air"].fill_null(0.0).to_numpy()[None, :]
     a_drv = anchor["driver"].to_numpy()
     t_drv = target["driver"].to_numpy()
     level = np.empty((N_DRAWS, target.height))
@@ -360,6 +440,8 @@ def forecast(race_lr: pl.DataFrame, deg: dict, lap_coef: tuple[float, float],
         level[:, t_drv == d] = lv[:, None]
 
     draws = level + mean_part(target) + sigma * rng.standard_normal((N_DRAWS, target.height))
+    if traffic is not None and "dirty_air" in anchor.columns:
+        draws = draws + traffic[0] * traffic[1]
     labels = target.select(
         "session_uid", "driver", "stint_id", "lap_in_session", "tyre_age",
         pl.col("compound_rel").cast(pl.Utf8).alias("compound"), "lap_time_s",
@@ -373,10 +455,13 @@ def forecast(race_lr: pl.DataFrame, deg: dict, lap_coef: tuple[float, float],
 
 def run_weekend(wk: Weekend, prac_lr: pl.DataFrame, race_lr: pl.DataFrame,
                 ft: FuelTrack, sigma: float, seed: int = 0,
-                prior: tuple[float, float] | None = None) -> dict[str, Forecast]:
+                prior: tuple[float, float] | None = None,
+                fuel_only: tuple[float, float] | None = None,
+                between: bool = True,
+                traffic: tuple[float, float] | None = None) -> dict[str, Forecast]:
     """All methods on one weekend, from identical inputs -- including the
     same degradation prior, so the only thing that differs is fuel/track."""
-    slopes = practice_slopes(prac_lr)
+    slopes = practice_slopes(prac_lr, between)
     comps = sorted(race_lr["compound_rel"].cast(pl.Utf8).unique().to_list())
     f_id = ft.fuel_pace(wk)
     f_conv = (CONVENTIONAL_S_PER_KG * wk.kappa, 0.0)
@@ -386,22 +471,166 @@ def run_weekend(wk: Weekend, prac_lr: pl.DataFrame, race_lr: pl.DataFrame,
         # (fuel pace for degradation, practice track term, race lap coef)
         "identified": (f_id, wk.track_per_lap, lc_id),
         "no-track": (f_id, 0.0, (-f_id[0], f_id[1])),
+        **({"fuel-only": ((fuel_only[0] * wk.kappa, fuel_only[1] * wk.kappa),
+                          wk.track_per_lap,
+                          (-fuel_only[0] * wk.kappa, fuel_only[1] * wk.kappa))}
+           if fuel_only else {}),
         "conventional": (f_conv, 0.0, (-f_conv[0], 0.0)),
         "naive": ((0.0, 0.0), 0.0, (0.0, 0.0)),
     }
     out = {}
     for name, (fuel, track, lc) in spec.items():
         deg = degradation(slopes, fuel, track, comps, prior)
-        fc = forecast(race_lr, deg, lc, sigma, seed=seed)
+        fc = forecast(race_lr, deg, lc, sigma, seed=seed, traffic=traffic)
         if fc is not None:
             out[name] = fc
     return out
 
 
-def prepare(practice: pl.DataFrame, race_raw: pl.DataFrame):
-    """Long-run filtered laps, keyed by weekend."""
-    prac = fp.long_runs(practice, min_laps=4).with_columns(
+def prepare(practice: pl.DataFrame, race_raw: pl.DataFrame, trim: bool = True):
+    """Long-run filtered laps, keyed by weekend. `trim=False` keeps the slow
+    laps the outlier trim would drop -- the lap-filtering ablation.
+
+    Race laps carry `dirty_air`, computed on ALL laps before filtering: the
+    running order depends on every car on track (as in the ladder)."""
+    from tyretrace.features import traffic as tr
+
+    prac = fp.long_runs(practice, min_laps=4, trim=trim).with_columns(
         pl.col("session_uid").str.slice(0, 7).alias("weekend"))
-    race = fp.long_runs(race_raw, min_laps=4).with_columns(
+    race_raw = tr.dirty_air_index(tr.add_gap_ahead(race_raw))
+    race = fp.long_runs(race_raw, min_laps=4, trim=trim).with_columns(
         pl.col("session_uid").str.slice(0, 7).alias("weekend"))
     return prac, race
+
+
+# --------------------------------------------------------------------------
+# rolling recalibration
+# --------------------------------------------------------------------------
+
+MIN_CAL_LAPS = 500      # history needed before a recalibration is trusted
+Z90 = 3.2897            # width of a central 90% interval in standard units
+
+
+def standardised(fc: Forecast) -> np.ndarray:
+    """Each lap's outcome in units of its own forecast spread:
+    z = (actual - median) / (90% half-width / 1.645)."""
+    y = fc.laps["lap_time_s"].to_numpy()
+    q05, q50, q95 = np.quantile(fc.draws, [0.05, 0.5, 0.95], axis=0)
+    scale = np.maximum((q95 - q05) / Z90, 1e-6)
+    return (y - q50) / scale
+
+
+def recalibrate(fc: Forecast, z_hist: np.ndarray, seed: int = 0) -> Forecast:
+    """Replace each lap's predictive shape with the EMPIRICAL distribution of
+    standardised errors from earlier weekends, keeping the lap's own median
+    and spread.
+
+    This is quantile recalibration (Kuleshov et al., 2018) done strictly
+    causally: z_hist comes only from races before this one. Because it is
+    empirical, it learns asymmetry too -- the lopsided, slow-side misses a
+    symmetric noise model cannot represent (audit/b1_baselines.py, L6).
+    """
+    rng = np.random.default_rng(seed)
+    q05, q50, q95 = np.quantile(fc.draws, [0.05, 0.5, 0.95], axis=0)
+    scale = np.maximum((q95 - q05) / Z90, 1e-6)
+    z = rng.choice(z_hist, size=fc.draws.shape[0], replace=True)
+    return Forecast(fc.laps, q50[None, :] + scale[None, :] * z[:, None], fc.deg, fc.lap_coef)
+
+
+def traffic_history(race: pl.DataFrame, keys) -> dict[str, tuple[float, float]]:
+    """Per race: the wake cost (s per unit dirty air) the race itself shows,
+    and the mean dirty air of laps after each driver's anchor. Used only as
+    history for LATER weekends."""
+    from tyretrace.backtest.postrace import post_race_fit
+
+    out = {}
+    for k in keys:
+        r = race.filter(pl.col("weekend") == k)
+        if r.height == 0 or "dirty_air" not in r.columns:
+            continue
+        wake = post_race_fit(r)["wake"]
+        later = (r.sort("driver", "lap_in_session")
+                  .with_columns(pl.int_range(pl.len()).over("driver").alias("_k"))
+                  .filter(pl.col("_k") >= ANCHOR_LAPS))
+        out[k] = (wake, float(later["dirty_air"].fill_null(0.0).mean()))
+    return out
+
+
+def traffic_prior(earlier: list[tuple[float, float]]) -> tuple[float, float] | None:
+    """Median wake and mean later-lap dirty air over earlier races."""
+    if not earlier:
+        return None
+    return (float(np.median([e[0] for e in earlier])), float(np.mean([e[1] for e in earlier])))
+
+
+def rolling(practice: pl.DataFrame, quali: pl.DataFrame, race_raw: pl.DataFrame, *,
+            prior: bool = True, between: bool = True, trim: bool = True,
+            methods=("identified", "fuel-only", "conventional", "naive"),
+            score_from: str | None = None, tank: dict[int, float] | None = None,
+            traffic: bool = False, recal: bool = False) -> dict:
+    """The rolling-origin backtest as a function, with each component
+    switchable -- what the ablation table (audit/a6_ablations.py) needs.
+
+    Same procedure as audit/t3_backtest.py: for each weekend with
+    MIN_EARLIER races before it, learn fuel/track from those races, the
+    degradation prior from their pit stops, degradation per compound from the
+    weekend's practice, and forecast every race lap after each driver's
+    anchor. Returns {method: pooled metrics over every evaluated lap}.
+    """
+    from tyretrace.eval import metrics
+
+    prac, race = prepare(practice, race_raw, trim=trim)
+    weekends = weekend_inputs(quali, race_raw, tank)
+    dry = dry_weekends(race_raw)
+    keys = sorted(k for k in weekends if k in dry)
+    rc = {k: race_lap_coef(race.filter(pl.col("weekend") == k)) for k in keys}
+    rd = {k: race_degradation(race.filter(pl.col("weekend") == k)) for k in keys}
+    tf = traffic_history(race, keys) if traffic else {}
+    acc: dict[str, list] = {m: [] for m in methods}
+    # standardised errors of every EARLIER evaluated weekend, per method
+    z_hist: dict[str, list] = {m: [] for m in methods}
+    for i, k in enumerate(keys):
+        # history always uses every earlier weekend; score_from only limits
+        # which weekends are SCORED (e.g. 2026 alone for the headline)
+        if i < MIN_EARLIER or (score_from and k < score_from):
+            continue
+        earlier = keys[:i]
+        ft = fit_fuel_track([rc[e][0] for e in earlier], [rc[e][1] for e in earlier],
+                            [weekends[e] for e in earlier])
+        fo = fit_fuel_only([rc[e][0] for e in earlier], [rc[e][1] for e in earlier],
+                           [weekends[e] for e in earlier])
+        sigma = float(np.median([rc[e][2] for e in earlier]))
+        pr = degradation_prior([rd[e] for e in earlier]) if prior else None
+        wk = weekends[k]
+        p_w = prac.filter(pl.col("weekend") == k)
+        fcs = run_weekend(wk, p_w, race.filter(pl.col("weekend") == k), ft, sigma,
+                          seed=i, prior=pr, fuel_only=fo, between=between,
+                          traffic=traffic_prior([tf[e] for e in earlier]) if traffic else None)
+        for m in methods:
+            if m not in fcs:
+                continue
+            fc = fcs[m]
+            raw_z = standardised(fc)
+            if recal:
+                hist = np.concatenate(z_hist[m]) if z_hist[m] else np.array([])
+                if len(hist) >= MIN_CAL_LAPS:
+                    fc = recalibrate(fc, hist, seed=i)
+            acc[m].append(fc)
+            z_hist[m].append(raw_z)              # becomes history for later weekends
+    out = {}
+    for m, fcs in acc.items():
+        if not fcs:
+            continue
+        y = np.concatenate([f.laps["lap_time_s"].to_numpy() for f in fcs])
+        aft = np.concatenate([f.laps["after_stop"].to_numpy() for f in fcs])
+        crps = np.concatenate([metrics.crps_ensemble(f.draws, f.laps["lap_time_s"].to_numpy())
+                               for f in fcs])
+        med = np.concatenate([np.median(f.draws, axis=0) for f in fcs])
+        lo = np.concatenate([np.quantile(f.draws, 0.05, axis=0) for f in fcs])
+        hi = np.concatenate([np.quantile(f.draws, 0.95, axis=0) for f in fcs])
+        out[m] = {"crps": float(crps.mean()), "crps_after": float(crps[aft].mean()),
+                  "mae": float(np.abs(med - y).mean()),
+                  "bias_after": float((med - y)[aft].mean()),
+                  "cov90": float(((y >= lo) & (y <= hi)).mean()),
+                  "n": int(len(y)), "n_after": int(aft.sum()), "weekends": len(fcs)}
+    return out
