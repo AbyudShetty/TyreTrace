@@ -178,6 +178,31 @@ TASKS: dict[str, Task] = {t.name: t for t in [
          pull_hint="python -m tyretrace run lake",
          expect="FAIL",
          expect_why='verdict flips with the unverified 2026 fuel load; identified best under 70 kg (-8%) and most robust; 2026 race slopes contradict 70 kg'),
+
+    Task("uncertainty_t", "audit/u1_uncertainty.py",
+         "Predictive uncertainty: rolling Student-t calibration and fuel sensitivity",
+         inputs=("out/artifacts/backtest_lake/predictive.parquet", *LAKE_INPUTS),
+         outputs=("out/artifacts/uncertainty_t/predictive.parquet",
+                  "out/artifacts/uncertainty_t/predictive_110.parquet",
+                  "out/artifacts/uncertainty_t/fits.parquet"),
+         optional=True, minutes=1.0, args=("--fuel-sensitivity",),
+         pull_hint="python -m tyretrace run backtest_lake",
+         expect="SHIP", expect_why="retrospective rolling lap-time calibration; "
+                    "CRPS improves and coverage is in band under both fuel assumptions"),
+
+    Task("strategy_reference", "audit/s1_strategy.py",
+         "Conditional one-stop error/regret versus a fitted post-race reference",
+         inputs=("out/artifacts/backtest_lake/params.parquet", *LAKE_INPUTS),
+         outputs=("out/artifacts/strategy_reference/decisions.parquet",
+                  "out/artifacts/strategy_reference/summary.parquet"),
+         optional=True, minutes=0.2,
+         pull_hint="python -m tyretrace run backtest_lake"),
+
+    Task('published_verified','audit/b4_published_parity.py',
+         'Source-verified TUM tyre curve baseline; diagnostic comparison',
+         inputs=('out/audit_race.parquet','out/audit_quali.parquet'),
+         outputs=('out/artifacts/published_verified/predictive.parquet',),
+         optional=True,minutes=0.3),
 ]}
 
 # everything runnable without touching the network
@@ -222,6 +247,10 @@ def is_stale(t: Task) -> tuple[bool, str]:
 
     if _mtime(ROOT / t.script) > last:
         return True, "script changed"
+
+    for p in t.inputs:
+        if _mtime(ROOT / p) > last:
+            return True, f"input {p} changed"
 
     # a code edit anywhere in the package invalidates everything; cheaper to
     # be wrong about a rerun than to report a stale gate as current
@@ -333,13 +362,18 @@ def cmd_status(args, exit_nonzero: bool = False) -> int:
     print(f"{'TASK':<10s} {'GATE':<6s} {'TIME':>7s}   SUMMARY")
     print("=" * 72)
     surprises = []
+    incomplete = []
     for n, t in TASKS.items():
         e = data["tasks"].get(n, {})
         gate = e.get("gate", "-")
         dur = e.get("metrics", {}).get("duration_s")
         note = ""
         if gate == "-":
-            note = "not run"
+            if e:
+                note = "INCOMPLETE: saved metrics have no recorded verdict"
+                incomplete.append(n)
+            else:
+                note = "not run"
         elif gate != t.expect:
             note = f"UNEXPECTED (wanted {t.expect})"
             surprises.append(n)
@@ -352,6 +386,8 @@ def cmd_status(args, exit_nonzero: bool = False) -> int:
     print("=" * 72)
     if surprises:
         print(f"UNEXPECTED gates: {', '.join(surprises)}")
+    elif incomplete:
+        print("recorded verdicts match expectations; incomplete tasks: " + ', '.join(incomplete))
     else:
         print("all gates as expected")
     print(f"results: {results.RESULTS.relative_to(ROOT)}")

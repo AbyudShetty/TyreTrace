@@ -200,7 +200,7 @@ LOG_K2 = (0.02, 0.05, 0.1, 0.2, 0.35, 0.5, 0.75, 1.0, 1.5, 2.5)
 
 
 def published(tr: Design, te: Design, seed: int = 0,
-              s_per_kg: float = CONVENTIONAL_S_PER_KG) -> np.ndarray:
+              s_per_kg: float = CONVENTIONAL_S_PER_KG, *, verified: bool = False) -> np.ndarray:
     """Lap-time model of the TUM race simulation family.
 
     Reimplemented after A. Heilmeier, M. Graf, M. Lienkamp, "A Race
@@ -214,8 +214,10 @@ def published(tr: Design, te: Design, seed: int = 0,
 
     because it differs most from the conventional quadratic (B2): it is
     concave, fast early and flattening, where B2 can curve either way.
-    VERIFY the exact equations against the paper before citing them at
-    judging -- this follows the model family, not a line-by-line port.
+    This historical adaptation omits the compound-specific k0 and uses
+    inclusive tyre age. Its old scores remain reproducible. The primary
+    TUM implementation was checked on 2026-10-26: published_verified() adds
+    k0 and uses start-of-lap age. See docs/PUBLISHED_BASELINE.md.
 
     k2 is shared within a weekend (grid search); k1 is fitted per weekend x
     compound by least squares; levels per driver at each weekend.
@@ -227,7 +229,9 @@ def published(tr: Design, te: Design, seed: int = 0,
     def X(d: Design, k2: float) -> np.ndarray:
         dw = _onehot(d.weekend * d.n_driver + d.driver, n_dw)
         wc = _onehot(d.weekend * d.n_compound + d.compound, n_wc)
-        return np.column_stack([dw, wc * np.log(k2 * d.age + 1.0)[:, None]])
+        age=np.maximum(d.age-1.,0.) if verified else d.age
+        curve=wc*np.log1p(k2*age)[:,None]
+        return np.column_stack([dw,wc,curve]) if verified else np.column_stack([dw,curve])
 
     best = None
     for k2 in LOG_K2:
@@ -237,6 +241,17 @@ def published(tr: Design, te: Design, seed: int = 0,
     k2, coef, rsd = best
     mean = X(te, k2) @ coef + s_per_kg * _fuel_kg(te)
     return _gaussian_draws(mean, np.full(te.n, rsd), seed)
+
+
+def published_verified(tr: Design,te: Design,seed: int=0,
+                       s_per_kg: float=CONVENTIONAL_S_PER_KG) -> np.ndarray:
+    """Source-verified TUM logarithmic curve, fitted to the identical split.
+
+    Includes compound-specific k0 and start-of-lap age. The min-norm additive
+    intercept parameterisation has redundant levels but unique fitted values;
+    no physical identification is claimed for those nuisance intercepts.
+    """
+    return published(tr,te,seed,s_per_kg,verified=True)
 
 
 BASELINES = {

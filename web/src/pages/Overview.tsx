@@ -1,4 +1,5 @@
 import { ModelRows, type ModelRow } from "../charts/ModelRows";
+import { UncertaintyPanel } from "../components/UncertaintyPanel";
 import { Card, GateBadge, Loading, Missing, PageHead, Stat } from "../components/ui";
 import { useData, type Summary } from "../lib/data";
 import { fx, int, pct, signed, weekend } from "../lib/format";
@@ -66,8 +67,10 @@ export default function Overview() {
     })),
   ];
 
-  const bt = Object.fromEntries(d.backtest.methods.map((m) => [m.method, m]));
+  const backtest = d.backtest_lake ?? d.backtest;
+  const bt = Object.fromEntries(backtest.methods.map((m) => [m.method, m]));
   const surprises = d.gates.filter((g) => g.gate && !g.as_expected);
+  const incomplete = d.gates.filter((g) => !g.gate && g.recorded_at);
 
   return (
     <div className="page">
@@ -89,6 +92,8 @@ export default function Overview() {
               foot="From gap-to-car-ahead in timing data alone" />
       </div>
 
+      <UncertaintyPanel data={d.uncertainty} />
+
       <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div>
           <h2 className="section-title">The identification chain</h2>
@@ -102,9 +107,10 @@ export default function Overview() {
         <ModelRows rows={rows} band={[0.85, 0.95]} />
         <p className="note" style={{ marginTop: 12 }}>
           {shipped ? (
-            <><strong>{shipped.rung} ships:</strong> it beats the rung below on forecast error and its 90% intervals
+            <><strong>{shipped.rung} passes on these ten weekends:</strong> it beats the rung below on forecast error and its 90% intervals
             hold {pct(shipped.cov90, 1)} of laps, inside the band. Rungs above it are more flexible but
-            overconfident. Hover a row for the convergence check (r̂).</>
+            overconfident. Raw L3 failed to replicate on 61 additional weekends; the rolling predictive
+            uncertainty audit above is a separate evaluation. Hover a row for convergence (r̂).</>
           ) : (
             <><strong>{best.rung} is the most accurate model, but no model ships:</strong> all of them are
             overconfident, with too few laps inside their 90% intervals. Hover a row for the convergence check (r̂).</>
@@ -114,8 +120,8 @@ export default function Overview() {
 
       <div className="grid g2" style={{ alignItems: "start" }}>
         <Card title="Practice → race: the decisive test"
-              sub={`Each race forecast from its own weekend · ${d.backtest.weekends} weekends · laps after a pit stop`}
-              right={<GateBadge gate={d.backtest.gate} />}>
+              sub={`Practice, qualifying and five opening green laps per driver · ${backtest.weekends} weekends · laps after a pit stop`}
+              right={<GateBadge gate={backtest.gate} />}>
           <table className="table">
             <thead><tr><th>Method</th><th className="num">CRPS</th><th className="num">Bias</th></tr></thead>
             <tbody>
@@ -129,19 +135,20 @@ export default function Overview() {
             </tbody>
           </table>
           <p className="note" style={{ marginTop: 12 }}>
-            Ours beats naive by {pct(1 - bt.identified.crps_after / bt.naive.crps_after)} but trails a fixed
-            0.030 s/kg by {pct(bt.identified.crps_after / bt.conventional.crps_after - 1, 1)}. The fuel effect
-            learned from races is <strong>too small</strong>, which is the first out-of-sample evidence on the
-            open fuel-pace gap.
+            Ours beats naive by {pct(1 - bt.identified.crps_after / bt.naive.crps_after)}. Fuel-corrected methods
+            have similar forecast errors on the larger dataset. The uncertainty audit separately checks
+            whether the predictive intervals account for those errors.
           </p>
         </Card>
 
-        <Card title="Gate board" sub={surprises.length ? `${surprises.length} unexpected result(s)` : "Every audit returned the verdict it was expected to"}>
+        <Card title="Gate board" sub={surprises.length ? `${surprises.length} unexpected result(s)`
+          : incomplete.length ? `${incomplete.length} recorded audit(s) have no saved verdict`
+          : "Recorded audit verdicts match expectations"}>
           <table className="table">
             <tbody>
-              {d.gates.filter((g) => g.gate).map((g) => (
+              {d.gates.filter((g) => g.gate || g.recorded_at).map((g) => (
                 <tr key={g.task}>
-                  <td style={{ width: 82 }}><GateBadge gate={g.gate} /></td>
+                  <td style={{ width: 82 }}>{g.gate ? <GateBadge gate={g.gate} /> : "Incomplete"}</td>
                   <td>
                     <div style={{ fontSize: 13 }}>{dash(g.summary)}</div>
                     {g.expect !== "PASS" && <div className="note">Expected: {dash(g.why)}</div>}

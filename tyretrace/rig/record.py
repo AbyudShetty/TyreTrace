@@ -50,12 +50,15 @@ class LapAccumulator:
         self.state: dict[int, dict] = {}
         self.rows: list[dict] = []
         self.stint: dict[int, int] = {}
+        self.skipped_gaps = 0
+        self.skipped_stale_truth = 0
 
     def _blank(self) -> dict:
         return {"lap_num": 0, "fuel": None, "age": None, "compound": "UNKNOWN",
                 "wear": None, "wear_fl": None, "wear_fr": None,
                 "wear_rl": None, "wear_rr": None, "pit": 0, "clock": 0.0,
-                "n_stops": 0}
+                "n_stops": 0,'invalid':False,'status_clock':None,'wear_clock':None,
+                'compound_rel':'UNKNOWN'}
 
     def update(self, kind: int, rows: list[dict], session_time: float) -> None:
         for idx, r in enumerate(rows):
@@ -63,8 +66,9 @@ class LapAccumulator:
             st["clock"] = session_time
 
             if kind == P.PACKET_CAR_STATUS:
-                if r["fuel_in_tank_kg"] > 0.0:
+                if r["fuel_capacity_kg"] > 0.0:
                     st["fuel"] = float(r["fuel_in_tank_kg"])
+                    st['status_clock']=session_time
                 age = int(r["tyres_age_laps"])
                 # A tyre-age RESET is the stint boundary, and it is the
                 # physical signal rather than a reported one -- num_pit_stops
@@ -74,23 +78,37 @@ class LapAccumulator:
                     self.stint[idx] = self.stint.get(idx, 0) + 1
                 st["age"] = age
                 st["compound"] = r["compound"]
+                st['compound_rel']=r.get('compound_rel','UNKNOWN')
 
             elif kind == P.PACKET_CAR_DAMAGE:
                 for w in ("fl", "fr", "rl", "rr"):
                     st[f"wear_{w}"] = float(r[f"wear_{w}"])
                 st["wear"] = max(st[f"wear_{w}"] for w in ("fl", "fr", "rl", "rr"))
+                st['wear_clock']=session_time
 
             elif kind == P.PACKET_LAP_DATA:
                 lap = int(r["current_lap_num"])
                 st["pit"] = int(r["pit_status"])
                 # a completed lap: number advanced and we have a valid time
-                if lap > st["lap_num"] and r["last_lap_time_ms"] > 0:
+                if st['lap_num'] > 0 and lap > st['lap_num'] + 1:
+                    self.skipped_gaps += 1
+                elif st['lap_num'] > 0 and lap == st['lap_num'] + 1 and r["last_lap_time_ms"] > 0:
                     self._commit(idx, st, r)
+                if lap>st['lap_num']:
+                    st['invalid']=bool(r['current_lap_invalid'])
+                else:
+                    st['invalid'] |= bool(r['current_lap_invalid'])
                 st["lap_num"] = lap
 
     def _commit(self, idx: int, st: dict, lap_row: dict) -> None:
-        if st["fuel"] is None or st["age"] is None:
+        if st["fuel"] is None or st["age"] is None or st['wear'] is None:
             return                      # no status packet yet; skip the lap
+        if (st['status_clock'] is None or st['wear_clock'] is None
+                or st['clock']-st['status_clock']>2.0 or st['clock']-st['wear_clock']>2.0):
+            self.skipped_stale_truth+=1
+            return
+        if st['compound']=='UNKNOWN':
+            return
 
         sid = self.stint.get(idx, 0)
         age = st["age"]
@@ -100,11 +118,12 @@ class LapAccumulator:
             "driver": f"C{idx:02d}", "team": f"T{idx // 2:02d}",
             "stint_id": sid,
             "lap_in_run": max(age, 1),
-            "lap_in_session": int(lap_row["current_lap_num"]),
+            # LastLapTime belongs to the lap that ENDED, not the current lap.
+            "lap_in_session": int(lap_row["current_lap_num"]) - 1,
             "session_clock_s": float(st["clock"]),
             "tyre_age": age,
-            "compound_rel": "UNKNOWN",
-            "compound_abs": st["compound"] if st["compound"] != "UNKNOWN" else "C3",
+            "compound_rel": st['compound_rel'],
+            "compound_abs": st["compound"],
             "is_fresh": age <= 1,
             "lap_time_s": lap_row["last_lap_time_ms"] / 1000.0,
             "sector_1_s": None, "sector_2_s": None, "sector_3_s": None,
@@ -113,7 +132,7 @@ class LapAccumulator:
             "track_temp_c": None, "air_temp_c": None,
             "track_status": "1",
             "pit_in": st["pit"] != 0, "pit_out": age <= 1,
-            "is_valid": not bool(lap_row["current_lap_invalid"]),
+            "is_valid": not st['invalid'],
             "corner_feats": None,
             # --- the whole point: truth the estimator never sees ------------
             "truth_fuel_kg": st["fuel"],

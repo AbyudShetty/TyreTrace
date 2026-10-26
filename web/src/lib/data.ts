@@ -15,10 +15,33 @@ export interface GateRow {
   recorded_at: string | null;
 }
 
+export interface PredictiveScores {
+  crps: number;
+  coverage_90: number;
+  width90: number;
+  n: number;
+  calibration?: Record<string, number>;
+}
+
+export interface UncertaintyComparison {
+  all: { original: PredictiveScores; calibrated: PredictiveScores; passes: boolean };
+  after_stop: { original: PredictiveScores; calibrated: PredictiveScores; passes: boolean };
+  paired_weekends: { n: number; mean_delta: number; ci95: [number, number]; fraction_improved: number };
+}
+
+export interface UncertaintySummary {
+  gate: Gate;
+  min_history_weekends: number;
+  phases: { development?: UncertaintyComparison; confirmation?: UncertaintyComparison };
+  fuel_sensitivity_110?: UncertaintyComparison | null;
+}
+
 export interface Summary {
   generated_at: string;
   data: { weekends: number; first: string; last: string; race_laps: number; quali_laps: number; practice_laps: number };
   gates: GateRow[];
+  uncertainty?: UncertaintySummary | null;
+  backtest_lake?: { gate: Gate; weekends: number; methods: Summary["backtest"]["methods"] } | null;
   headline: {
     tau: { median: number; frac_negative: number; z: number; n: number; total_s: number };
     fuel_pace: { mean: number; q05: number; q95: number; physics: [number, number] };

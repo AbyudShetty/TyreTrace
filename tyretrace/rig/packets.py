@@ -2,9 +2,9 @@
 
 WHY THIS IS THE MOST VALUABLE THING IN THE PROJECT
 --------------------------------------------------
-The stream carries true fuel mass in kg and true per-wheel tyre wear, for
-EVERY car in the session, not just the player's. So you do not need to drive:
-run a full AI race and harvest ~20 cars of ground truth per session. It is
+The stream can carry fuel mass in kg and per-wheel tyre wear for multiple
+cars. Privacy settings may redact those channels; the capture report measures
+how many cars actually expose both instead of assuming twenty. It is
 also the only place a tyre cliff is observable on demand (practice runs get
 boxed before it, races rarely go deep enough), and the only place the run
 planner's counterfactual can actually be executed.
@@ -18,9 +18,8 @@ ground-truth harness. Three defences:
 
   1. Per-car stride is DERIVED from the packet length, never assumed, so a
      format year that adds trailing fields still decodes.
-  2. Leading-field offsets only. Codemasters/EA have added fields at the END
-     of each car block across F1 23/24/25, so offsets near the front are the
-     stable ones. Anything late in a block is not read.
+  2. Version-specific lap offsets. F1 24 added minute fields in the middle
+     of lap data; a stride change alone cannot keep F1 23 aligned.
   3. `validate()` checks physical plausibility (fuel 0-150 kg, wear 0-100%,
      lap numbers sane). Run `python -m tyretrace.rig.record --self-check`
      against a live session BEFORE trusting a single recorded lap.
@@ -31,6 +30,7 @@ table, do not loosen the check.
 from __future__ import annotations
 
 import struct
+import math
 from dataclasses import dataclass
 
 # --- header ---------------------------------------------------------------
@@ -74,20 +74,30 @@ LAP_DATA_OFFSETS = {
     "current_lap_time_ms": (4,  "I"),
     "lap_distance_m":      (20, "f"),
     "total_distance_m":    (24, "f"),
-    "car_position":        (33, "B"),
-    "current_lap_num":     (34, "B"),
-    "pit_status":          (35, "B"),   # 0 none, 1 pitting, 2 in pit area
-    "num_pit_stops":       (36, "B"),
-    "current_lap_invalid": (38, "B"),
-    "driver_status":       (45, "B"),   # 0 in garage, 1 flying lap, 2 in lap...
+    "car_position":        (32, "B"),
+    "current_lap_num":     (33, "B"),
+    "pit_status":          (34, "B"),   # 0 none, 1 pitting, 2 in pit area
+    "num_pit_stops":       (35, "B"),
+    "current_lap_invalid": (37, "B"),
+    "driver_status":       (44, "B"),   # 0 in garage, 1 flying lap, 2 in lap...
+}
+
+# EA's 2023 layout lacks two delta-minute fields in the MIDDLE of the block.
+# Deriving stride alone cannot repair shifted offsets. See docs/GAME_RIG.md.
+LAP_DATA_OFFSETS_BY_FORMAT = {
+    2023: {name: (offset - 2 if offset >= 20 else offset, fmt)
+           for name, (offset, fmt) in LAP_DATA_OFFSETS.items()},
+    2024: LAP_DATA_OFFSETS,
+    2025: LAP_DATA_OFFSETS,
 }
 
 # Actual tyre compound ids -> Pirelli construction, so the rig speaks the same
 # language as the Pirelli C1-C5 map used for real-data pooling.
 COMPOUND_BY_ID = {
-    16: "C5", 17: "C4", 18: "C3", 19: "C2", 20: "C1", 21: "C0",
+    16: "C5", 17: "C4", 18: "C3", 19: "C2", 20: "C1", 21: "C0", 22: "C6",
     7: "INT", 8: "WET",
 }
+VISUAL_BY_ID = {16: 'SOFT', 17: 'MEDIUM', 18: 'HARD', 7: 'INTERMEDIATE', 8: 'WET'}
 
 
 @dataclass(frozen=True)
@@ -99,6 +109,7 @@ class Header:
     session_time: float
     frame: int
     player_car_index: int
+    packet_version: int = 1
 
 
 class PacketError(Exception):
@@ -114,26 +125,32 @@ def parse_header(buf: bytes) -> Header:
         raise PacketError(
             f"packet format {fmt} not supported (expected one of "
             f"{SUPPORTED_FORMATS}); F1 22 and earlier use a 24-byte header")
-    return Header(fmt, year, pid, uid, stime, frame, player)
+    if not math.isfinite(stime) or stime < 0:
+        raise PacketError("invalid session clock")
+    if _pv != 1:
+        raise PacketError(f"unsupported packet version {_pv}")
+    return Header(fmt, year, pid, uid, stime, frame, player, _pv)
 
 
-def car_stride(buf: bytes, *, trailing_max: int = 24) -> int:
+def car_stride(buf: bytes) -> int:
     """Bytes per car, derived from the packet length rather than assumed.
 
     A format year that appends fields to each car block changes the stride but
     not the leading offsets, so deriving it here is what makes the decoder
     survive a game update.
     """
-    body = len(buf) - HEADER_SIZE
+    hdr = parse_header(buf)
+    trailing = 2 if hdr.packet_id == PACKET_LAP_DATA else 0
+    body = len(buf) - HEADER_SIZE - trailing
     if body <= 0:
         raise PacketError("packet has no body")
     stride = body // MAX_CARS
     if stride <= 0:
         raise PacketError(f"implausible stride from {body}-byte body")
-    if body - stride * MAX_CARS > trailing_max:
+    if body % MAX_CARS:
         raise PacketError(
             f"body {body} does not look like {MAX_CARS} car blocks "
-            f"(stride {stride}, trailing {body - stride * MAX_CARS})")
+            f"(unexpected partial block of {body % MAX_CARS} bytes)")
     return stride
 
 
@@ -158,6 +175,7 @@ def decode_car_status(buf: bytes) -> list[dict]:
     rows = _decode(buf, CAR_STATUS_OFFSETS, car_stride(buf))
     for r in rows:
         r["compound"] = COMPOUND_BY_ID.get(r["actual_compound"], "UNKNOWN")
+        r["compound_rel"] = VISUAL_BY_ID.get(r["visual_compound"], "UNKNOWN")
     return rows
 
 
@@ -166,7 +184,8 @@ def decode_car_damage(buf: bytes) -> list[dict]:
 
 
 def decode_lap_data(buf: bytes) -> list[dict]:
-    return _decode(buf, LAP_DATA_OFFSETS, car_stride(buf))
+    hdr = parse_header(buf)
+    return _decode(buf, LAP_DATA_OFFSETS_BY_FORMAT[hdr.packet_format], car_stride(buf))
 
 
 DECODERS = {
@@ -192,11 +211,15 @@ def validate(kind: int, rows: list[dict]) -> list[str]:
         if any(not (0.0 <= f <= 150.0) for f in fuel):
             problems.append(f"fuel outside 0-150 kg: {max(fuel):.1f}")
         caps = [r["fuel_capacity_kg"] for r in rows if r["fuel_capacity_kg"] > 0]
+        if any(not math.isfinite(r['fuel_capacity_kg']) for r in rows):
+            problems.append('non-finite fuel capacity')
         if caps and not all(50.0 <= c <= 150.0 for c in caps):
             problems.append(f"fuel capacity implausible: {caps[:3]}")
         ages = [r["tyres_age_laps"] for r in rows]
         if any(a > 200 for a in ages):
             problems.append(f"tyre age above 200 laps: {max(ages)}")
+        if any(r['fuel_in_tank_kg']>.01 and r.get('compound')=='UNKNOWN' for r in rows):
+            problems.append('active car reports unsupported tyre construction')
 
     elif kind == PACKET_CAR_DAMAGE:
         wear = [r[k] for r in rows for k in ("wear_fl", "wear_fr", "wear_rl", "wear_rr")]
@@ -211,8 +234,12 @@ def validate(kind: int, rows: list[dict]) -> list[str]:
         if any(r["pit_status"] > 2 for r in rows):
             problems.append("pit_status outside 0-2")
         dist = [r["lap_distance_m"] for r in rows]
-        if any(d < -2000 or d > 30000 for d in dist):
+        if any(not math.isfinite(d) or d < -2000 or d > 30000 for d in dist):
             problems.append(f"lap distance implausible: {min(dist):.0f} to "
                             f"{max(dist):.0f} m")
+        if any(r['current_lap_invalid'] not in (0,1) for r in rows):
+            problems.append('current_lap_invalid outside 0-1')
+        if any(r['driver_status'] > 4 for r in rows):
+            problems.append('driver_status outside 0-4')
 
     return problems

@@ -3,9 +3,47 @@
 Causal tyre-degradation intelligence — recovering true wear rates from confounded
 practice data.
 
-**Status: Phase 0 (feasibility audit).** No model is being built yet, on purpose.
-The audit exists to kill the fatal assumptions cheaply, before any expensive work
-depends on them.
+**Status: research prototype with a data lake, model audits, rolling backtests,
+run planner and initial dashboards.** Predictive lap-time uncertainty has a
+rolling calibration layer. Raw Bayesian ladder calibration, latent-parameter
+validation and live game proof remain distinct questions.
+
+### Predictive uncertainty update — 2026-10-26
+
+`python -m tyretrace run uncertainty_t` runs the uncertainty audit, including
+both 2026 fuel-load assumptions, without overwriting the original backtest.
+`python -m tyretrace export` refreshes the React overview's uncertainty table.
+
+The new layer preserves point forecasts and learns predictive dispersion from
+strictly earlier forecast errors, weighting weekends equally. A Student-t
+distribution accommodates rare large misses, with raw-spread, race-horizon and
+tyre-age scale terms. At least eight earlier forecast weekends are required.
+A Gaussian variant improved coverage but failed CRPS; its failed results remain.
+
+| 2026 evaluation: 14 weekends | Original CRPS | Repaired CRPS | Original 90% coverage | Repaired coverage |
+|---|---:|---:|---:|---:|
+| 70 kg, all 11,560 scored laps | 0.51940 | 0.51749 | 82.2% | 93.6% |
+| 70 kg, 7,251 laps after a stop | 0.54964 | 0.54653 | 79.7% | 93.1% |
+| 110 kg, all scored laps | 0.55578 | 0.54912 | 80.0% | 93.0% |
+| 110 kg, after a stop | 0.60170 | 0.59247 | 76.2% | 92.1% |
+
+Both scenarios clear the pooled predictive ship gate: lower CRPS and coverage
+inside [0.85, 0.95], overall and after stops. This does not establish a gain
+on every race or superiority over conventional correction. The paired-weekend
+bootstrap interval for the small CRPS improvement includes zero. Coverage varies
+by race and the 95% intervals are conservative.
+
+This is retrospective rolling validation: after the Gaussian attempt failed on
+2026, that block was no longer untouched. Prospective replication needs new
+races. These are marginal lap-time predictive intervals, not calibrated latent
+tyre/fuel intervals or joint strategy simulations. Original L3 remains HOLD
+at scale. See [`docs/UNCERTAINTY.md`](docs/UNCERTAINTY.md). Earlier narratives
+below preserve historical findings, superseded where a dated update says so.
+
+Also added on 2026-10-26: [game capture/replay and independently verified packet
+layouts](docs/GAME_RIG.md), [conditional one-stop decision diagnostics](docs/STRATEGY_EVALUATION.md),
+and [verification of the published tyre-curve baseline](docs/PUBLISHED_BASELINE.md).
+Live game proof and the full rolling ML/published comparisons remain pending.
 
 ---
 
@@ -193,21 +231,21 @@ coefficient outright, and unlike that assumption it is checkable against the gam
 
 ## The rig
 
-`tyretrace/rig/` decodes the F1 game's UDP stream, which carries **true fuel mass in kg
-and true per-wheel tyre wear for every car on track** — so you run an AI race and harvest
-~20 cars of ground truth without driving. It is the only place a tyre cliff is observable
-on demand, and the only place the run planner's counterfactual can actually be executed.
+`tyretrace/rig/` decodes fuel mass and per-wheel wear from the F1 game's UDP
+stream. Privacy settings can redact those channels; capture diagnostics count
+the cars that actually expose both. Controlled game sessions can expose tyre
+cliffs and execute candidate practice programmes.
 
 Recorded laps land in the same canonical schema as everything else with the `truth_*`
 columns filled, so the estimator sees only real-world-observable channels and the test is
 whether it recovers a state it was never shown. On the fake stream it does: degradation
 +0.05514 against 0.05500 true, fuel pace +0.05817 against 0.05775.
 
-**The offsets are written from the published spec, not verified against a running game
-here.** A wrong offset does not crash — it yields plausible garbage, the worst failure
-mode for a ground-truth harness. Three defences: per-car stride is derived from packet
-length rather than assumed; only leading offsets are read (EA appends new fields at the
-end of each block); and `validate()` checks physical plausibility. Run
+**Updated 2026-10-26:** independent fixtures from the official EA 2023/24/25
+specifications caught and fixed lap-data offsets that the old self-consistent
+fake could not detect. F1 23 needs different offsets because fields changed
+in the middle, not only at the end. Completed-lap indexing and stale truth
+handling are fixed too. Live game verification is still required. Run
 
 ```
 python -m tyretrace.rig.record --self-check
@@ -216,9 +254,11 @@ python -m tyretrace.rig.record --self-check
 against a live session before trusting a single recorded lap. If it fails, fix the offset
 table — do not loosen the check.
 
-Game setup: Telemetry → UDP ON, format 2023/2024/2025, port 20777, 20 Hz+, and **"UDP Send
-All Cars" ON** — without it only the player's car reports and the 20-cars-per-session
-advantage is lost.
+Then use `python -m tyretrace.rig.capture --seconds 900 --out out/rig/live_001.udp`
+to retain raw evidence, checksums, provenance, canonical laps and a diagnostic
+report. Reanalyse with `--replay out/rig/live_001.udp`. A synthetic run is never
+reported as live proof. See [`docs/GAME_RIG.md`](docs/GAME_RIG.md) for setup and
+the limits of the truth-blind versus fuel-observed reference comparison.
 
 ---
 

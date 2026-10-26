@@ -219,3 +219,26 @@ def test_the_original_ten_weekends_are_all_dry():
         pytest.skip("audit data not present")
     r = sources.load("audit")["race"]
     assert len(B.dry_weekends(r)) == r["session_uid"].n_unique() == 10
+
+
+def test_new_weekend_slope_uncertainty_does_not_vanish_with_more_history():
+    rng=np.random.default_rng(31)
+    wks=[B.Weekend(f'w{i}',-.01,90.,rng.uniform(1.5,2.2)) for i in range(300)]
+    truth=[-.03*w.kappa+.4*w.track_per_lap+rng.normal(0,.012) for w in wks]
+    fit=B.fit_fuel_track(truth,[.0002]*len(wks),wks)
+    _,parameter_sd=fit.lap_coef(WK)
+    _,predictive_sd=fit.predictive_lap_coef(WK)
+    assert .009<fit.slope_sd<.015
+    assert predictive_sd>5*parameter_sd
+    assert np.isclose(predictive_sd**2,parameter_sd**2+fit.slope_sd**2)
+
+
+def test_target_lap_outcomes_cannot_affect_the_forecast():
+    r=race(seed=11)
+    # First five eligible laps (2..6) are the declared inputs. Poison the rest.
+    poisoned=r.with_columns(pl.when(pl.col('lap_in_session')>6).then(1e6)
+                           .otherwise(pl.col('lap_time_s')).alias('lap_time_s'))
+    deg={c:(v,.001,'practice') for c,v in DEG.items()}
+    a=B.forecast(r,deg,(-FUEL_PACE+TRACK,.001),sigma=.1)
+    b=B.forecast(poisoned,deg,(-FUEL_PACE+TRACK,.001),sigma=.1)
+    assert np.array_equal(a.draws,b.draws)

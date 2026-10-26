@@ -88,3 +88,21 @@ def test_audits_record_under_their_own_task_name():
                 continue
             assert name == t.name, (
                 f"{t.script} records as {name!r} but its task is {t.name!r}")
+
+
+def test_changed_forecast_input_invalidates_calibration(tmp_path,monkeypatch):
+    root=tmp_path
+    (root/'forecast.parquet').write_bytes(b'new prediction snapshot')
+    monkeypatch.setattr(pipeline,'ROOT',root)
+    monkeypatch.setattr(results,'get',lambda name:{'finished_at_epoch':1.0})
+    task=pipeline.Task('uncertainty_t','audit.py','calibration',inputs=('forecast.parquet',))
+    stale,why=pipeline.is_stale(task)
+    assert stale and 'input' in why
+
+
+def test_status_cannot_call_missing_verdicts_all_as_expected(monkeypatch,capsys):
+    monkeypatch.setattr(results,'load',lambda:{'tasks':{'l3_lake_new':{'metrics':{'crps':.62}}}})
+    pipeline.cmd_status(None)
+    out=capsys.readouterr().out
+    assert 'INCOMPLETE' in out and 'l3_lake_new' in out
+    assert 'all gates as expected' not in out

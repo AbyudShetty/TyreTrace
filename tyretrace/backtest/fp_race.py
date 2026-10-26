@@ -268,6 +268,7 @@ class FuelTrack:
     s: float                 # race / quali evolution scale
     cov: np.ndarray          # 2x2 posterior covariance of (beta_f, s)
     n_races: int
+    slope_sd: float = 0.0     # new-weekend scatter, distinct from parameter covariance
 
     def lap_coef(self, wk: Weekend) -> tuple[float, float]:
         """Predicted race-lap coefficient at W and its sd:
@@ -277,6 +278,15 @@ class FuelTrack:
 
     def fuel_pace(self, wk: Weekend) -> tuple[float, float]:
         return self.beta_f * wk.kappa, float(np.sqrt(self.cov[0, 0])) * wk.kappa
+
+    def predictive_lap_coef(self, wk: Weekend) -> tuple[float, float]:
+        """New-race slope uncertainty, including between-weekend variation.
+
+        lap_coef() retains its historical parameter-only semantics so original
+        backtests remain reproducible. Do not confuse its SD with this one.
+        """
+        mean, sd = self.lap_coef(wk)
+        return mean, float(np.hypot(sd, self.slope_sd))
 
 
 def fit_fuel_only(coefs, ses, weekends: list[Weekend]) -> tuple[float, float]:
@@ -333,7 +343,7 @@ def fit_fuel_track(coefs, ses, weekends: list[Weekend]) -> FuelTrack:
         if abs(new - eta2) < 1e-12:
             break
         eta2 = new
-    return FuelTrack(float(m[0]), float(m[1]), cov, len(y))
+    return FuelTrack(float(m[0]), float(m[1]), cov, len(y), float(np.sqrt(eta2)))
 
 
 # --------------------------------------------------------------------------
@@ -458,7 +468,8 @@ def run_weekend(wk: Weekend, prac_lr: pl.DataFrame, race_lr: pl.DataFrame,
                 prior: tuple[float, float] | None = None,
                 fuel_only: tuple[float, float] | None = None,
                 between: bool = True,
-                traffic: tuple[float, float] | None = None) -> dict[str, Forecast]:
+                traffic: tuple[float, float] | None = None,
+                methods: tuple[str, ...] | None = None) -> dict[str, Forecast]:
     """All methods on one weekend, from identical inputs -- including the
     same degradation prior, so the only thing that differs is fuel/track."""
     slopes = practice_slopes(prac_lr, between)
@@ -480,6 +491,8 @@ def run_weekend(wk: Weekend, prac_lr: pl.DataFrame, race_lr: pl.DataFrame,
     }
     out = {}
     for name, (fuel, track, lc) in spec.items():
+        if methods is not None and name not in methods:
+            continue
         deg = degradation(slopes, fuel, track, comps, prior)
         fc = forecast(race_lr, deg, lc, sigma, seed=seed, traffic=traffic)
         if fc is not None:

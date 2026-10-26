@@ -113,3 +113,20 @@ def test_a_wrong_fuel_assumption_fits_fine_and_reports_the_wrong_degradation():
     assert np.allclose(B.conventional_degradation(right), deg, atol=0.01)
     reported = B.conventional_degradation(wrong)
     assert np.all(np.abs(reported - deg) > 0.5 * bias)  # the number is wrong
+
+
+def test_verified_published_curve_recovers_compound_offsets_and_start_age():
+    d=race(sigma=.01,seed=91)
+    rng=np.random.default_rng(92)
+    ci=d.compound
+    fuel=B._fuel_kg(d)
+    # Actual source model: k0 differs by compound, log curve uses age at START
+    # of a lap. The legacy zero-k0 / inclusive-age adaptation is misspecified.
+    d.y=(90+.03*fuel+np.array([-.7,.9])[ci]
+         +np.array([.8,1.2])[ci]*np.log1p(.2*np.maximum(d.age-1,0))
+         +rng.normal(0,.01,d.n))
+    tr,te=cut(d)
+    verified=B.published_verified(tr,te)
+    legacy=B.published(tr,te)
+    assert metrics.mae(verified,te.y)<.04
+    assert metrics.mae(verified,te.y)<metrics.mae(legacy,te.y)/2

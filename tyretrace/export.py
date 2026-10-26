@@ -90,7 +90,12 @@ def summary() -> dict:
     base = [{"name": n, "key": k, "crps": _m("baselines", f"crps_{k}"),
              "mae": _m("baselines", f"mae_{k}"), "cov90": _m("baselines", f"cov90_{k}")}
             for k, n in (("b1", "Naive"), ("b2", "Conventional"), ("b3", "Gradient boosting"),
-                         ("b4", "Published (race sim)"))]
+                         ("b4", "Log-curve adaptation (legacy)"))]
+    if results.get('published_verified'):
+        base.append({'name':'TUM curve (source verified)','key':'b4_verified',
+                     'crps':_m('published_verified','crps'),
+                     'mae':_m('published_verified','mae'),
+                     'cov90':_m('published_verified','cov90')})
     def bt_methods(task):
         return [{"method": m, **{k: _m(task, f"{k}_{m.replace('-', '_')}")
                                  for k in ("crps", "crps_after", "bias_after", "cov90",
@@ -140,6 +145,11 @@ def summary() -> dict:
         "headline_2026": ({**results.get("headline_2026").get("metrics", {}),
                            "gate": results.get("headline_2026").get("gate")}
                           if results.get("headline_2026") else None),
+        "uncertainty": ({**results.get("uncertainty_t").get("metrics", {}),
+                         "gate": results.get("uncertainty_t").get("gate")}
+                        if results.get("uncertainty_t") else None),
+        "strategy_reference": (results.get('strategy_reference').get('metrics', {})
+                               if results.get('strategy_reference') else None),
     }
 
 

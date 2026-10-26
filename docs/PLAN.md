@@ -16,9 +16,17 @@ calendar time on a part-time student schedule.
 
 ## What is left
 
+**2026-10-26 update:** marginal lap-time predictive calibration is implemented
+and clears the pooled CRPS/coverage gate in retrospective rolling checks on
+2025 and 2026, including both fuel assumptions. It is available in the forecast
+API, task runner and React overview. The Gaussian attempt remains rejected.
+The small gain is uncertain across independent weekends; prospective
+replication needs new races. Raw L3 and latent-parameter calibration are not
+declared fixed by a predictive wrapper. Details: `docs/UNCERTAINTY.md`.
+
 | # | Work | Days | Notes |
 |---|---|---|---|
-| 1 | **Calibration at scale — the main open problem** | 3–5 | L3 ships on the 10 weekends but NOT on 61 new ones (coverage 0.797). Rejected so far: compromised-lap mixture (L6), rolling recalibration (CRPS +8.8%). Most error is weekend-level, not lap noise |
+| 1 | **Prospective calibration replication / latent uncertainty** | research | Predictive layer implemented: 2026 cov90 0.936 / 0.930 under 70 / 110 kg, with lower CRPS. Original L3 remains HOLD at scale; latent tyre/fuel intervals need separate validation |
 | 2 | **Degradation from practice** | 3–5 | the largest forecast error on 68 weekends (rms 0.92 s vs slope 0.50, traffic 0.34) — better practice-slope estimation is where race forecasting improves next |
 | 3 | Live rig `--self-check` against the F1 game | 1–3 | needs the game; fix offsets, never loosen the check |
 | 4 | Regime / HMM model | 8–15 | warm-up and cliff as states; time-box |
@@ -28,6 +36,14 @@ calendar time on a part-time student schedule.
 | — | Per-corner telemetry features | 8–12 | **cut** — future-work slide |
 
 ## Done
+
+**2026-10-26 additions:** raw game capture/replay and reference-validation
+workflow, independently verified 2023/24/25 packet layouts, completed-lap and
+freshness fixes, and UDP loopback tests (`docs/GAME_RIG.md`). Live validation
+still requires a running game. A conditional one-stop decision diagnostic now
+reports stop-lap error and regret on 520 eligible driver races across the lake;
+its post-race fitted reference is not observed counterfactual truth. Four full
+rolling baselines and a regime model remain unfinished.
 
 | Work | Date | Result |
 |---|---|---|

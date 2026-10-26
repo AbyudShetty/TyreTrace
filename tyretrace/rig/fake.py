@@ -41,7 +41,7 @@ def _header(packet_id: int, session_uid: int, session_time: float,
 # something, so it picks the real ones.
 STRIDE_CAR_STATUS = 55
 STRIDE_CAR_DAMAGE = 42
-STRIDE_LAP_DATA = 52
+STRIDE_LAP_DATA = 57
 
 
 def _pack_block(stride: int, fields: dict, offsets: dict) -> bytearray:
@@ -61,7 +61,7 @@ def build_car_status(cars: list[dict], **hdr) -> bytes:
             "fuel_capacity_kg": float(c.get("capacity", 110.0)),
             "fuel_remaining_laps": float(c.get("fuel_laps", 0.0)),
             "actual_compound": int(c.get("compound_id", 18)),
-            "visual_compound": int(c.get("compound_id", 18)),
+            "visual_compound": int(c.get("visual_id", 17)),
             "tyres_age_laps": int(c.get("age", 0)),
         }, P.CAR_STATUS_OFFSETS)
     return bytes(buf)
@@ -72,7 +72,8 @@ def build_car_damage(cars: list[dict], **hdr) -> bytes:
     for i in range(P.MAX_CARS):
         c = cars[i] if i < len(cars) else {}
         w = float(c.get("wear", 0.0))
-        buf += _pack_block(STRIDE_CAR_DAMAGE, {
+        stride = 46 if hdr.get('fmt',2024) == 2025 else STRIDE_CAR_DAMAGE
+        buf += _pack_block(stride, {
             "wear_rl": w, "wear_rr": w,
             "wear_fl": w * 0.9, "wear_fr": w * 0.9,
         }, P.CAR_DAMAGE_OFFSETS)
@@ -81,9 +82,11 @@ def build_car_damage(cars: list[dict], **hdr) -> bytes:
 
 def build_lap_data(cars: list[dict], **hdr) -> bytes:
     buf = bytearray(_header(P.PACKET_LAP_DATA, **hdr))
+    fmt = hdr.get('fmt',2024)
+    stride = 50 if fmt == 2023 else STRIDE_LAP_DATA
     for i in range(P.MAX_CARS):
         c = cars[i] if i < len(cars) else {}
-        buf += _pack_block(STRIDE_LAP_DATA, {
+        buf += _pack_block(stride, {
             "last_lap_time_ms": int(c.get("last_lap_ms", 0)),
             "current_lap_time_ms": int(c.get("cur_lap_ms", 0)),
             "lap_distance_m": float(c.get("lap_distance", 0.0)),
@@ -94,7 +97,7 @@ def build_lap_data(cars: list[dict], **hdr) -> bytes:
             "num_pit_stops": int(c.get("n_stops", 0)),
             "current_lap_invalid": 0,
             "driver_status": int(c.get("driver_status", 1)),
-        }, P.LAP_DATA_OFFSETS)
+        }, P.LAP_DATA_OFFSETS_BY_FORMAT[fmt])
     # LapData carries two trailing bytes after the car blocks
     buf += struct.pack("<BB", 255, 255)
     return bytes(buf)
@@ -119,6 +122,7 @@ class FakeSession:
     fuel_start: float = 100.0
     pit_wear_pct: float = 55.0
     seed: int = 0
+    fmt: int = 2024
 
     session_uid: int = 0xF1F1F1F1
     _rng: np.random.Generator = field(init=False)
@@ -134,6 +138,12 @@ class FakeSession:
         stops = np.zeros(self.n_cars, dtype=int)
         offs = self._rng.normal(0, 0.25, self.n_cars)
         clock, frame = 0.0, 0
+
+        # Establish current lap 1 before the first completed lap is reported.
+        hdr = dict(session_uid=self.session_uid,session_time=0.,frame=0,fmt=self.fmt)
+        yield (build_lap_data([{'lap_num':1} for _ in range(self.n_cars)],**hdr),
+               build_car_status([{'fuel':self.fuel_start,'age':0} for _ in range(self.n_cars)],**hdr),
+               build_car_damage([{'wear':0.} for _ in range(self.n_cars)],**hdr))
 
         for lap in range(1, self.n_laps + 1):
             pitting = wear > self.pit_wear_pct
@@ -157,7 +167,7 @@ class FakeSession:
                             "fuel_laps": fuel[i] / self.kappa}
                            for i in range(self.n_cars)]
             cars_damage = [{"wear": wear[i]} for i in range(self.n_cars)]
-            cars_lap = [{"lap_num": lap,
+            cars_lap = [{"lap_num": lap+1,
                          "last_lap_ms": int(lap_s[i] * 1000),
                          "pit_status": 1 if pitting[i] else 0,
                          "n_stops": int(stops[i]),
@@ -166,7 +176,7 @@ class FakeSession:
                          "driver_status": 1}
                         for i in range(self.n_cars)]
 
-            hdr = dict(session_uid=self.session_uid, session_time=clock, frame=frame)
+            hdr = dict(session_uid=self.session_uid, session_time=clock, frame=frame, fmt=self.fmt)
             yield (build_lap_data(cars_lap, **hdr),
                    build_car_status(cars_status, **hdr),
                    build_car_damage(cars_damage, **hdr))

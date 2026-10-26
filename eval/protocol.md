@@ -159,3 +159,33 @@ The lake backtest's gate judges *fuel-only* with traffic-aware anchors. The
 ten-weekend backtest keeps its original gate and its recorded FAIL.
 
 **No change** to metrics, splits, ship gates, or the falsification conditions in §8.
+
+### 2026-10-26 — predictive uncertainty repair and temporal confirmation
+
+The current uncertainty work distinguishes uncertainty in a population mean
+from variation of a new weekend, and uncertainty in a practice slope from its
+transfer to race conditions. These are predictive discrepancies, not new
+claims that fuel mass or absolute degradation is directly observed.
+
+Development uses 2023–2024 forecast residuals, with 2025 for development
+validation. Before inspecting new 2026 uncertainty scores, freeze the selected
+algorithm and settings in `docs/UNCERTAINTY.md`. Evaluate 2026 once using rolling
+history strictly before each target weekend. Previous project work has already
+seen aggregate 2026 results; this is retrospective temporal confirmation, not
+an untouched prospective experiment. An actually new season is still required
+for prospective replication. Changes after the confirmation must be labelled
+development and cannot reuse it as an untouched gate.
+
+Report original and repaired distributions on identical laps: CRPS, MAE,
+coverage at 50/80/90/95%, interval width, before/after-stop coverage, per-weekend
+results, and uncertainty of the paired weekend improvement. Keep original
+negative results and gates. A repair ships only if CRPS improves and 90%
+coverage is in [0.85, 0.95], including post-stop laps. The requirement is not
+relaxed by widening intervals. Calibration of predictive lap times must not be
+described as calibration of latent degradation credible intervals.
+
+The operational Tier 3 forecast uses practice, qualifying and each driver's
+first five eligible green race laps as pace anchors. It conditions on the
+observed tyre strategy for evaluation; it is not an FP2-only pre-race strategy
+forecast. A separately reported early-race-to-late-race diagnostic likewise
+cannot be presented as Tier 3. No change to the original metrics or ship band.
