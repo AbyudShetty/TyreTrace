@@ -31,6 +31,7 @@ export interface UncertaintyComparison {
 
 export interface UncertaintySummary {
   gate: Gate;
+  eligibility_check?: PredictiveScores | null;
   min_history_weekends: number;
   phases: { development?: UncertaintyComparison; confirmation?: UncertaintyComparison };
   fuel_sensitivity_110?: UncertaintyComparison | null;
@@ -77,6 +78,7 @@ export function useData<T>(name: string): Loaded<T> {
   const [s, set] = useState<Loaded<T>>({ state: "loading" });
   useEffect(() => {
     let live = true;
+    set({ state: "loading" });
     load<T>(name).then(
       (data) => live && set({ state: "ready", data }),
       (e: Error) => live && set({ state: "error", error: e.message }),

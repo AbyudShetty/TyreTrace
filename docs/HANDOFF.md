@@ -1,5 +1,42 @@
 # Claude Code to Codex handoff — 2026-10-26
 
+**Verified 2026-10-27:** 203 Python tests including slow recovery, 17 web tests,
+production build, 36 browser views and 48 palette checks pass. All 26 offline
+tasks are current. The isolated Austin experiment completed with ML model
+criterion HOLD. The flag-only 2026 sensitivity has 81.4% identified coverage;
+the original filtered-population uncertainty SHIP cannot establish operational
+calibration. See `RESULTS.md` and `TONIGHT.md` for current evidence. Negative
+experiments are preserved, not assigned to the user as software implementation.
+The actual dashboard video is `out/demo/TyreTrace-demo.mp4` (235 s,
+1440 × 1000, synthetic narration), with full decoding and sampled-frame checks.
+
+**2026-10-27 autonomous completion update:** the six placeholder React pages
+are replaced, the product is restyled for desktop/mobile and light/dark themes,
+all 84 lake weekends have sourced physical-compound nominations, and robust
+practice, a two/three-state HMM, rolling ML, a source-form published competitor
+and quadratic conventional baseline are implemented. New ingests resolve real
+construction or null without rewriting historical caches. Candidate adoption
+is separate from implementation; the robust/HMM candidates do not improve the
+identified predictor in the current retrospective comparison. ML is stronger
+on the pooled scores, with substantial uncertainty across independent weekends.
+
+The original whole-stint eligibility filter can use later pace to select
+anchors. A separate flag-only population check is implemented and the protocol
+amendment records this limitation; neither result is called fresh prospective
+proof. Runner failures are retried, L3 records convergence diagnostics, static
+exports are atomic, and calibration/source hashes remain inspectable.
+
+An additional Austin 2026 weekend was available outside the lake. Its predictor,
+protocol and original input hashes were frozen before timing access, and the
+new data is isolated in `out/fresh_holdout/`. It is one unseen offline holdout,
+not a forecast issued before the event. The original lake remains unchanged.
+`python -m tyretrace app` now launches React; Streamlit requires `--legacy`.
+
+The latest [results](RESULTS.md), [demo script](DEMO.md), [manual checklist](TOMORROW.md)
+and `TONIGHT.md` supersede the historical progress assessment below. Verification
+counts and final audit verdicts belong in those current documents. No live game
+proof, latent-parameter repair or superiority guarantee is claimed.
+
 **Subsequent implementation:** the predictive uncertainty layer is now built,
 tested and integrated; see `docs/UNCERTAINTY.md` for current results and limits.
 Game capture/replay, independent packet-layout fixtures and a conditional

@@ -1,11 +1,17 @@
 import { lazy, Suspense, type ComponentType } from "react";
-import { Loading, PageHead } from "./components/ui";
+import { Loading } from "./components/ui";
 import { useRoute } from "./lib/router";
 import { useTheme } from "./lib/theme";
 
 const Overview = lazy(() => import("./pages/Overview"));
 const Problem = lazy(() => import("./pages/Problem"));
 const Planner = lazy(() => import("./pages/Planner"));
+const Races = lazy(() => import("./pages/Races"));
+const Track = lazy(() => import("./pages/Track"));
+const Models = lazy(() => import("./pages/Models"));
+const Predictions = lazy(() => import("./pages/Predictions"));
+const Backtest = lazy(() => import("./pages/Backtest"));
+const Rig = lazy(() => import("./pages/Rig"));
 
 interface Route { id: string; label: string; page?: ComponentType }
 
@@ -15,19 +21,19 @@ const NAV: { group: string; routes: Route[] }[] = [
     { id: "problem", label: "The problem", page: Problem },
   ] },
   { group: "Data", routes: [
-    { id: "races", label: "Race explorer" },
-    { id: "track", label: "Track evolution" },
+    { id: "races", label: "Race explorer", page: Races },
+    { id: "track", label: "Track & compounds", page: Track },
   ] },
   { group: "Models", routes: [
-    { id: "ladder", label: "Model ladder" },
-    { id: "predictions", label: "Held-out forecasts" },
-    { id: "backtest", label: "Practice → race" },
+    { id: "ladder", label: "Models & evidence", page: Models },
+    { id: "predictions", label: "Held-out forecasts", page: Predictions },
+    { id: "backtest", label: "Practice → race", page: Backtest },
   ] },
   { group: "Decide", routes: [
     { id: "planner", label: "Run planner", page: Planner },
   ] },
   { group: "Ground truth", routes: [
-    { id: "rig", label: "Game rig" },
+    { id: "rig", label: "Game validation", page: Rig },
   ] },
 ];
 
@@ -41,17 +47,6 @@ function Logo() {
               strokeDasharray="44 22" strokeLinecap="round" transform="rotate(-60 16 16)" />
       <circle cx="16" cy="16" r="4.5" style={{ fill: "var(--hard)" }} />
     </svg>
-  );
-}
-
-function Soon({ label }: { label: string }) {
-  return (
-    <div className="page">
-      <PageHead eyebrow="Coming next" title={label}>
-        This page is being rebuilt for the new dashboard. Every number it will show already
-        exists in the pipeline; it is the presentation that is in progress.
-      </PageHead>
-    </div>
   );
 }
 
@@ -77,9 +72,8 @@ export default function App() {
             {g.routes.map((r) => (
               <a key={r.id} className="nav-item" href={`#/${r.id}`}
                  aria-current={r.id === current.id ? "page" : undefined}>
-                <span className="nav-dot" />
+                <span className="nav-symbol" aria-hidden>{({overview:"◈",problem:"?",races:"⌁",track:"↘",ladder:"▥",predictions:"⌖",backtest:"↗",planner:"◇",rig:"◎"} as Record<string,string>)[r.id]}</span>
                 {r.label}
-                {!r.page && <span className="nav-soon">soon</span>}
               </a>
             ))}
           </div>
@@ -96,8 +90,9 @@ export default function App() {
         </div>
       </nav>
       <main className="main">
+        <div className="workspace-bar"><span>TYRE TRACE <span className="workspace-divider">/</span> {current.label}</span><span className="workspace-status"><i /> Public data · research build</span></div>
         <Suspense fallback={<div className="page"><Loading /></div>}>
-          {Page ? <Page /> : <Soon label={current.label} />}
+          {Page && <Page />}
         </Suspense>
       </main>
     </div>

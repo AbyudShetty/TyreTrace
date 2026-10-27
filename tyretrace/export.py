@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import json
 import math
+import os
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -47,7 +49,15 @@ def _clean(x):
 def _write(name: str, obj) -> Path:
     DEST.mkdir(parents=True, exist_ok=True)
     p = DEST / name
-    p.write_text(json.dumps(_clean(obj), separators=(",", ":")), encoding="utf-8")
+    p.parent.mkdir(parents=True,exist_ok=True)
+    fd,tmp=tempfile.mkstemp(dir=p.parent,suffix='.tmp')
+    try:
+        with os.fdopen(fd,'w',encoding='utf-8') as fh:
+            json.dump(_clean(obj),fh,separators=(',',':'),allow_nan=False)
+        os.replace(tmp,p)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
     return p
 
 
@@ -146,6 +156,8 @@ def summary() -> dict:
                            "gate": results.get("headline_2026").get("gate")}
                           if results.get("headline_2026") else None),
         "uncertainty": ({**results.get("uncertainty_t").get("metrics", {}),
+                         "eligibility_check": next((r for r in _m('online_eligibility','summary') or []
+                             if r['method']=='identified' and r['year']=='2026' and r['subset']=='all'),None),
                          "gate": results.get("uncertainty_t").get("gate")}
                         if results.get("uncertainty_t") else None),
         "strategy_reference": (results.get('strategy_reference').get('metrics', {})
@@ -212,6 +224,9 @@ def main() -> int:
     fx.parent.mkdir(parents=True, exist_ok=True)
     fx.write_text(json.dumps(_clean(planner_fixtures()), indent=1), encoding="utf-8")
     written.append(fx)
+    from tyretrace.web_data import export as export_pages
+    weekends=export_pages(_write)
+    print(f'  exported page datasets and {weekends} race weekends')
     for p in written:
         print(f"  wrote {p.relative_to(ROOT)}  ({p.stat().st_size / 1024:.1f} KB)")
     return 0

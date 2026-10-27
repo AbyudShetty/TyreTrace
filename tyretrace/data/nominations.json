@@ -1,0 +1,888 @@
+{
+  "verified_on": "2026-10-27",
+  "nominations": [
+    {
+      "year": 2023,
+      "event": "abudhabi",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-abu-dhabi-grand-prix.64CNIc1wzgQmwUqJCWG1Q0",
+      "source_date": "2023-11-23"
+    },
+    {
+      "year": 2023,
+      "event": "australia",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://www.formula1.com/en/latest/article/pirelli-confirm-tyre-choices-for-first-three-f1-races-of-2023-as-new.1xlpcTVaLqw0NeM3aYoyCt",
+      "source_date": "2023-02-15",
+      "note": ""
+    },
+    {
+      "year": 2023,
+      "event": "austria",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-austrian-grand-prix.4uQiByAubQKgLekMk3g5Rz",
+      "source_date": "2023-06-29"
+    },
+    {
+      "year": 2023,
+      "event": "azerbaijan",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/2023-azerbaijan-grand-prix-tyres-pirelli-teams-drivers.1xGQAuax0HLdQXf0DzSw9H",
+      "source_date": "2023-04-27"
+    },
+    {
+      "year": 2023,
+      "event": "bahrain",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://www.formula1.com/en/latest/article/pirelli-confirm-tyre-choices-for-first-three-f1-races-of-2023-as-new.1xlpcTVaLqw0NeM3aYoyCt",
+      "source_date": "2023-02-15",
+      "note": ""
+    },
+    {
+      "year": 2023,
+      "event": "belgium",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2024-belgian-grand-prix-2024.1bVXWDHuyJqYPqPsYq5ByZ",
+      "source_date": "2024-07-24",
+      "note": "Source explicitly says same as the last two years."
+    },
+    {
+      "year": 2023,
+      "event": "brazil",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": "Explicit comparison to the 2023 nomination"
+    },
+    {
+      "year": 2023,
+      "event": "britain",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-dutch-grand-prix.3pw91vurngvK6UBYVfGWef",
+      "source_date": "2023-08-24"
+    },
+    {
+      "year": 2023,
+      "event": "canada",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-canadian-grand-prix.1Hw7hRXSHPaor3sWUdlv4C",
+      "source_date": "2023-06-15"
+    },
+    {
+      "year": 2023,
+      "event": "hungary",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-hungarian-grand-prix.4hNRA4AFjDT1PtiDn56imH",
+      "source_date": "2023-07-19"
+    },
+    {
+      "year": 2023,
+      "event": "italy",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-singapore-grand-prix.6dgOaYZ0irJfIp2bODgxVg",
+      "source_date": "2023-09-14",
+      "note": "Source explicitly names the preceding Monza nomination."
+    },
+    {
+      "year": 2023,
+      "event": "japan",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-qatar-grand-prix.7lwS2mAXKyyh7Un1AV8RVp",
+      "source_date": "2023-10-05",
+      "note": ""
+    },
+    {
+      "year": 2023,
+      "event": "lasvegas",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-abu-dhabi-grand-prix.64CNIc1wzgQmwUqJCWG1Q0",
+      "source_date": "2023-11-23"
+    },
+    {
+      "year": 2023,
+      "event": "mexico",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-mexico-city-grand.MAS6QQvlCln4LZmnPQRr9",
+      "source_date": "2023-10-26"
+    },
+    {
+      "year": 2023,
+      "event": "miami",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-miami-grand-prix.2cyD0jxr7HUNNeLtlPyJGb",
+      "source_date": "2023-05-04"
+    },
+    {
+      "year": 2023,
+      "event": "monaco",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-monaco-grand-prix.IKOQak5Uuxb3K46yhztxd",
+      "source_date": "2023-05-24"
+    },
+    {
+      "year": 2023,
+      "event": "netherlands",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-dutch-grand-prix.3pw91vurngvK6UBYVfGWef",
+      "source_date": "2023-08-24"
+    },
+    {
+      "year": 2023,
+      "event": "qatar",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-qatar-grand-prix.7lwS2mAXKyyh7Un1AV8RVp",
+      "source_date": "2023-10-05",
+      "note": ""
+    },
+    {
+      "year": 2023,
+      "event": "saudiarabia",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://www.formula1.com/en/latest/article/pirelli-confirm-tyre-choices-for-first-three-f1-races-of-2023-as-new.1xlpcTVaLqw0NeM3aYoyCt",
+      "source_date": "2023-02-15",
+      "note": ""
+    },
+    {
+      "year": 2023,
+      "event": "singapore",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-singapore-grand-prix.6dgOaYZ0irJfIp2bODgxVg",
+      "source_date": "2023-09-14"
+    },
+    {
+      "year": 2023,
+      "event": "spainbarcelona",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-spanish-grand-prix.3IaSmXq9Xlor4RI0Kk4MBr",
+      "source_date": "2023-05-31"
+    },
+    {
+      "year": 2023,
+      "event": "usa",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2023-united-states-grand.24UsOsaCszDcdoTFNZVcIl",
+      "source_date": "2023-10-19"
+    },
+    {
+      "year": 2024,
+      "event": "abudhabi",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": "Explicit same-as-2024 comparison"
+    },
+    {
+      "year": 2024,
+      "event": "australia",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/pirelli-nominates-the-compounds-for-the-start-of-2024/",
+      "source_date": "2023-12-01",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "austria",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/both-new-and-familiar-for-spielberg-to-budapest/",
+      "source_date": "2025-05-30",
+      "note": "Source explicitly says unchanged from 2024 for Austria and Hungary."
+    },
+    {
+      "year": 2024,
+      "event": "azerbaijan",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": "Explicit 2024 compound comparison"
+    },
+    {
+      "year": 2024,
+      "event": "bahrain",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://press.pirelli.com/pirelli-nominates-the-compounds-for-the-start-of-2024/",
+      "source_date": "2023-12-01",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "belgium",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/all-compounds-on-track-over-next-three-races/",
+      "source_date": "2024-07-08",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "brazil",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/all-the-2024-season-stats-from-the-earth-to-the-moon-almost-with-formula-1s-pirelli-tyres/",
+      "source_date": "2024-12-19",
+      "note": "Source explicitly states Interlagos changed from C2-C3-C4 to C3-C4-C5."
+    },
+    {
+      "year": 2024,
+      "event": "britain",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://press.pirelli.com/all-compounds-on-track-over-next-three-races/",
+      "source_date": "2024-07-08",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "canada",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2024-canadian-grand-prix.3xS2raatSWhmFr3YlQxBd3",
+      "source_date": "2024-06-05",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "china",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/these-are-the-p-zero-compounds-for-suzuka-shanghai-and-miami/",
+      "source_date": "2024-03-14",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "hungary",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/all-compounds-on-track-over-next-three-races/",
+      "source_date": "2024-07-08",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "imola",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/the-c6-to-make-its-debut-in-imola/",
+      "source_date": "2025-05-12",
+      "note": "Explicit 2024 hard/medium/soft values"
+    },
+    {
+      "year": 2024,
+      "event": "italy",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": "Explicit same-as-2024 comparison"
+    },
+    {
+      "year": 2024,
+      "event": "japan",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://press.pirelli.com/these-are-the-p-zero-compounds-for-suzuka-shanghai-and-miami/",
+      "source_date": "2024-03-14",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "lasvegas",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": "Explicit same-as-2024 comparison"
+    },
+    {
+      "year": 2024,
+      "event": "mexico",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": "Explicit 2024 compound comparison"
+    },
+    {
+      "year": 2024,
+      "event": "miami",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/these-are-the-p-zero-compounds-for-suzuka-shanghai-and-miami/",
+      "source_date": "2024-03-14",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "monaco",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2024-monaco-grand-prix.6XljI9p0yHXOccDGq1ryRo",
+      "source_date": "2024-05-22",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "netherlands",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://press.pirelli.com/all-compounds-on-track-over-next-three-races/",
+      "source_date": "2024-07-08",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "qatar",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": "Explicit same-as-2024 comparison"
+    },
+    {
+      "year": 2024,
+      "event": "saudiarabia",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/pirelli-nominates-the-compounds-for-the-start-of-2024/",
+      "source_date": "2023-12-01",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "singapore",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": "Explicit same-as-2024 comparison"
+    },
+    {
+      "year": 2024,
+      "event": "spainbarcelona",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2024-spanish-grand-prix.7rLCqBvroeRw7HVW8GGChP",
+      "source_date": "2024-06-19",
+      "note": ""
+    },
+    {
+      "year": 2024,
+      "event": "usa",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": "Explicit 2024 compound comparison"
+    },
+    {
+      "year": 2025,
+      "event": "abudhabi",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "australia",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/2025-compounds-something-new-for-jeddah/",
+      "source_date": "2025-03-05",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "austria",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/both-new-and-familiar-for-spielberg-to-budapest/",
+      "source_date": "2025-05-30",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "azerbaijan",
+      "hard": "C4",
+      "medium": "C5",
+      "soft": "C6",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "bahrain",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://press.pirelli.com/2025-compounds-something-new-for-jeddah/",
+      "source_date": "2025-03-05",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "belgium",
+      "hard": "C1",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/both-new-and-familiar-for-spielberg-to-budapest/",
+      "source_date": "2025-05-30",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "brazil",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "britain",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/both-new-and-familiar-for-spielberg-to-budapest/",
+      "source_date": "2025-05-30",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "canada",
+      "hard": "C4",
+      "medium": "C5",
+      "soft": "C6",
+      "source": "https://press.pirelli.com/from-monaco-to-montreal-all-the-compounds-in-play/",
+      "source_date": "2025-05-12",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "china",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/2025-compounds-something-new-for-jeddah/",
+      "source_date": "2025-03-05",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "hungary",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/both-new-and-familiar-for-spielberg-to-budapest/",
+      "source_date": "2025-05-30",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "imola",
+      "hard": "C4",
+      "medium": "C5",
+      "soft": "C6",
+      "source": "https://press.pirelli.com/the-c6-to-make-its-debut-in-imola/",
+      "source_date": "2025-05-12",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "italy",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "japan",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://press.pirelli.com/2025-compounds-something-new-for-jeddah/",
+      "source_date": "2025-03-05",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "lasvegas",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "mexico",
+      "hard": "C2",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "miami",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/pirelli-on-the-soft-side-for-miami-and-imola/",
+      "source_date": "2025-04-09",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "monaco",
+      "hard": "C4",
+      "medium": "C5",
+      "soft": "C6",
+      "source": "https://press.pirelli.com/from-monaco-to-montreal-all-the-compounds-in-play/",
+      "source_date": "2025-05-12",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "netherlands",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "qatar",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "saudiarabia",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/2025-compounds-something-new-for-jeddah/",
+      "source_date": "2025-03-05",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "singapore",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "spainbarcelona",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://press.pirelli.com/from-monaco-to-montreal-all-the-compounds-in-play/",
+      "source_date": "2025-05-12",
+      "note": ""
+    },
+    {
+      "year": 2025,
+      "event": "usa",
+      "hard": "C1",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/changes-and-status-quo-when-it-comes-to-compound-choices-for-the-rest-of-the-season0/",
+      "source_date": "2025-08-01",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "australia",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/complete-f1-tyre-range-for-the-first-three-grands-prix-of-2026/",
+      "source_date": "2025-12-15",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "austria",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/the-full-pirelli-range-for-spielberg-and-silverstone/",
+      "source_date": "2026-06-10",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "azerbaijan",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/tyre-compound-selections-for-baku-sepang-and-singapore/",
+      "source_date": "2026-08-27",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "belgium",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/the-compounds-selected-for-belgium-and-hungary/",
+      "source_date": "2026-07-01",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "brazil",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/the-compound-selection-for-austin-mexico-city-and-so-paulo/",
+      "source_date": "2026-10-09"
+    },
+    {
+      "year": 2026,
+      "event": "britain",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://press.pirelli.com/the-full-pirelli-range-for-spielberg-and-silverstone/",
+      "source_date": "2026-06-10",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "canada",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/the-first-sprint-in-montreal/",
+      "source_date": "2026-05-18",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "china",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/complete-f1-tyre-range-for-the-first-three-grands-prix-of-2026/",
+      "source_date": "2025-12-15",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "hungary",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/the-compounds-selected-for-belgium-and-hungary/",
+      "source_date": "2026-07-01",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "italy",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/tyre-compounds-selected-for-zandvoort-monza-and-madrid/",
+      "source_date": "2026-07-28",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "japan",
+      "hard": "C1",
+      "medium": "C2",
+      "soft": "C3",
+      "source": "https://press.pirelli.com/complete-f1-tyre-range-for-the-first-three-grands-prix-of-2026/",
+      "source_date": "2025-12-15",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "mexico",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/the-compound-selection-for-austin-mexico-city-and-so-paulo/",
+      "source_date": "2026-10-09"
+    },
+    {
+      "year": 2026,
+      "event": "miami",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/formula-1-returns-to-the-track-in-miami/",
+      "source_date": "2026-04-27",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "monaco",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/the-tyre-compound-selections-for-monte-carlo-and-barcelona/",
+      "source_date": "2026-05-19",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "netherlands",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/tyre-compounds-selected-for-zandvoort-monza-and-madrid/",
+      "source_date": "2026-07-28",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "sepang",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/tyre-compound-selections-for-baku-sepang-and-singapore/",
+      "source_date": "2026-08-27",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "singapore",
+      "hard": "C3",
+      "medium": "C4",
+      "soft": "C5",
+      "source": "https://press.pirelli.com/tyre-compound-selections-for-baku-sepang-and-singapore/",
+      "source_date": "2026-08-27",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "spainbarcelona",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/the-tyre-compound-selections-for-monte-carlo-and-barcelona/",
+      "source_date": "2026-05-19",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "spainmadrid",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/tyre-compounds-selected-for-zandvoort-monza-and-madrid/",
+      "source_date": "2026-07-28",
+      "note": ""
+    },
+    {
+      "year": 2026,
+      "event": "usa",
+      "hard": "C2",
+      "medium": "C3",
+      "soft": "C4",
+      "source": "https://press.pirelli.com/the-compound-selection-for-austin-mexico-city-and-so-paulo/",
+      "source_date": "2026-10-09"
+    }
+  ]
+}

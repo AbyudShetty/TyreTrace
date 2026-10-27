@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -203,6 +204,33 @@ TASKS: dict[str, Task] = {t.name: t for t in [
          inputs=('out/audit_race.parquet','out/audit_quali.parquet'),
          outputs=('out/artifacts/published_verified/predictive.parquet',),
          optional=True,minutes=0.3),
+
+    Task('compound_map','audit/d2_compound_map.py',
+         'Source-backed nomination coverage for every cached lake weekend',
+         inputs=(*LAKE_INPUTS,'tyretrace/data/nominations.json'),optional=True,minutes=0.1,
+         outputs=('out/artifacts/compound_map/coverage.parquet',)),
+
+    Task('rolling_models','audit/m1_rolling_models.py',
+         'Eight rolling methods: ML, source curve, quadratic, robust and HMM candidates',
+         deps=('backtest_lake','compound_map'),
+         inputs=(*LAKE_INPUTS,'tyretrace/data/nominations.json'),
+         outputs=tuple(f'out/artifacts/rolling_models/{n}.parquet' for n in
+                       ('summary','comparison','predictive','calibrated','calibration','fits','diagnostics')),
+         optional=True,minutes=20.0),
+
+    Task('online_eligibility','audit/m2_online_eligibility.py',
+         'Flag-only anchor eligibility sensitivity on the expanded race population',
+         deps=('compound_map',),inputs=(*LAKE_INPUTS,'tyretrace/data/nominations.json'),optional=True,minutes=5.0,
+         outputs=tuple(f'out/artifacts/online_eligibility/{n}.parquet' for n in ('summary','predictive','calibrated'))),
+
+    Task('fresh_holdout','audit/m3_fresh_holdout.py',
+         'Frozen unseen Austin holdout; isolated from the original lake',
+         deps=('online_eligibility',),optional=True,minutes=1.0,
+         inputs=('out/fresh_holdout/freeze.json','out/fresh_holdout/manifest.json',
+                 'out/fresh_holdout/practice.parquet','out/fresh_holdout/quali.parquet',
+                 'out/fresh_holdout/race.parquet','out/artifacts/online_eligibility/predictive.parquet'),
+         outputs=tuple(f'out/artifacts/fresh_holdout/{n}.parquet' for n in ('summary','predictive','original')),
+         pull_hint='python audit/m3_fresh_holdout.py --fetch'),
 ]}
 
 # everything runnable without touching the network
@@ -237,6 +265,11 @@ def _mtime(p: Path) -> float:
 def is_stale(t: Task) -> tuple[bool, str]:
     """Conservative: any doubt means rerun."""
     entry = results.get(t.name)
+    exit_code=entry.get('metrics',{}).get('exit_code',0)
+    if exit_code not in (0,1,None):
+        return True, 'previous audit process crashed'
+    if entry.get('metrics',{}).get('exit_code',0)!=0 and entry.get('gate')!=t.expect:
+        return True, 'previous run failed unexpectedly'
     last = entry.get("finished_at_epoch")
     if not last:
         return True, "never run"
@@ -252,12 +285,24 @@ def is_stale(t: Task) -> tuple[bool, str]:
         if _mtime(ROOT / p) > last:
             return True, f"input {p} changed"
 
-    # a code edit anywhere in the package invalidates everything; cheaper to
-    # be wrong about a rerun than to report a stale gate as current
-    newest_src = max((_mtime(p) for p in (ROOT / "tyretrace").rglob("*.py")),
+    # Scientific code remains conservatively shared across audits. Serving the
+    # React UI, rendering exports or changing runner messages cannot change a
+    # fit and should not force hours of resampling. Audit scripts themselves,
+    # their arguments and data inputs are checked independently.
+    presentation={'pipeline.py','export.py','web_data.py','__main__.py'}
+    scientific=(p for p in (ROOT/'tyretrace').rglob('*.py')
+        if p.name not in presentation and 'app' not in p.relative_to(ROOT/'tyretrace').parts)
+    newest_src = max((_mtime(p) for p in scientific),
                      default=0.0)
     if newest_src > last:
         return True, "package changed"
+
+    recorded_args=entry.get('metrics',{}).get('args')
+    if recorded_args is not None and recorded_args!=list(t.args):
+        return True, 'audit arguments changed'
+
+    if not entry.get('gate'):
+        return True, 'missing audit verdict'
 
     for d in t.deps:
         if results.get(d).get("finished_at_epoch", 0) > last:
@@ -289,12 +334,20 @@ def run_task(t: Task, *, extra: list[str] | None = None) -> tuple[bool, float]:
     # An audit that recorded its own gate during this run wins; otherwise fall
     # back to the exit code.
     self_reported = results.get(t.name).get("gate")
+    crashed=proc.returncode not in (0,1)
+    if crashed:
+        data=results.load();data['tasks'][t.name].pop('gate',None)
+        results._atomic_write(data,results.RESULTS)
+    incomplete=crashed or (not ok and not self_reported)
     results.record(t.name, {
         "duration_s": round(dur, 1),
         "exit_code": proc.returncode,
         "script": t.script,
         "args": list(t.args) + list(extra or []),
-    }, gate=self_reported or ("PASS" if ok else "FAIL"))
+        'execution_crashed':crashed,
+        'execution_incomplete':incomplete,
+        'gate_source':'none' if incomplete else 'script' if self_reported else 'exit_code',
+    }, gate=None if incomplete else self_reported or "PASS")
 
     # stamp completion separately so staleness survives a metrics-only write
     data = results.load()
@@ -323,6 +376,10 @@ def cmd_run(args) -> int:
 
     failed = []
     for t, should_run, why in plan:
+        # A dependency can finish after the initial plan was printed. Recheck
+        # cached tasks here so one invocation leaves downstream outputs fresh.
+        if not should_run:
+            should_run, why = is_stale(t)
         miss = missing_inputs(t)
         if miss:
             print(f"  SKIP  {t.name:<8s} needs {', '.join(miss)}")
@@ -348,10 +405,9 @@ def cmd_run(args) -> int:
             print(f"  (exit {code} is the expected {t.expect} outcome, "
                   "not a break)\n")
             continue
-        if not ok:
-            if not args.keep_going:
-                print("  stopping (use --keep-going to continue)\n")
-                break
+        if not ok and not args.keep_going:
+            print("  stopping (use --keep-going to continue)\n")
+            break
 
     return cmd_status(args, exit_nonzero=bool(failed))
 
@@ -368,7 +424,11 @@ def cmd_status(args, exit_nonzero: bool = False) -> int:
         gate = e.get("gate", "-")
         dur = e.get("metrics", {}).get("duration_s")
         note = ""
-        if gate == "-":
+        crashed=e.get('metrics',{}).get('exit_code',0) not in (0,1,None)
+        if crashed:
+            note=f"INCOMPLETE: audit process crashed (exit {e['metrics']['exit_code']}); rerun required"
+            incomplete.append(n)
+        elif gate == "-":
             if e:
                 note = "INCOMPLETE: saved metrics have no recorded verdict"
                 incomplete.append(n)
@@ -391,7 +451,7 @@ def cmd_status(args, exit_nonzero: bool = False) -> int:
     else:
         print("all gates as expected")
     print(f"results: {results.RESULTS.relative_to(ROOT)}")
-    return 1 if (exit_nonzero or surprises) else 0
+    return 1 if (exit_nonzero or surprises or incomplete) else 0
 
 
 def cmd_list(args) -> int:
@@ -408,13 +468,27 @@ def cmd_list(args) -> int:
 
 
 def cmd_app(args) -> int:
-    """Launch the dashboard. It only reads out/, so run tasks first."""
-    app = ROOT / "tyretrace" / "app" / "main.py"
-    cmd = [sys.executable, "-m", "streamlit", "run", str(app),
-           "--server.port", str(args.port)]
+    """React is the product UI; the old Streamlit app is explicitly opt-in."""
+    legacy=getattr(args,'legacy',False)
+    port=args.port or (8501 if legacy else 5173)
+    cwd=ROOT
+    if legacy:
+        app=ROOT/'tyretrace/app/main.py'
+        cmd=[sys.executable,'-m','streamlit','run',str(app),'--server.port',str(port)]
+    else:
+        npm=shutil.which('npm.cmd' if os.name=='nt' else 'npm')
+        if not npm:
+            print('React requires Node/npm. Install Node, then run npm ci from web/.')
+            return 1
+        if not (ROOT/'web/node_modules/vite').exists():
+            print('React dependencies are missing. Run npm ci from web/, then retry.')
+            return 1
+        cwd=ROOT/'web'
+        cmd=[npm,'run','dev','--','--host','127.0.0.1','--port',str(port),'--strictPort']
+        print(f'Tyre Trace React: http://127.0.0.1:{port} (saved data; no fits or downloads)',flush=True)
     env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     try:
-        return subprocess.run(cmd, cwd=str(ROOT), env=env).returncode
+        return subprocess.run(cmd, cwd=str(cwd), env=env).returncode
     except KeyboardInterrupt:
         return 0
 
@@ -441,7 +515,8 @@ def main(argv=None) -> int:
     x.set_defaults(fn=lambda a: __import__("tyretrace.export", fromlist=["main"]).main())
 
     a = sub.add_parser("app", help="open the dashboard")
-    a.add_argument("--port", type=int, default=8501)
+    a.add_argument("--port", type=int, default=None)
+    a.add_argument('--legacy',action='store_true',help='explicitly launch the old Streamlit dashboard')
     a.set_defaults(fn=cmd_app)
 
     args = ap.parse_args(argv)

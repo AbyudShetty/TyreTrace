@@ -20,6 +20,23 @@ def test_dependency_order_is_topological():
             assert order.index(dep) < order.index(name)
 
 
+def test_cached_child_is_rechecked_after_its_dependency_reruns(monkeypatch):
+    from types import SimpleNamespace
+    parent = pipeline.Task('parent', 'parent.py', 'parent')
+    child = pipeline.Task('child', 'child.py', 'child', deps=('parent',))
+    completed = []
+    monkeypatch.setattr(pipeline, 'TASKS', {'parent': parent, 'child': child})
+    monkeypatch.setattr(pipeline, 'is_stale', lambda t: (
+        t.name == 'parent' or 'parent' in completed, 'dependency changed'))
+    monkeypatch.setattr(pipeline, 'missing_inputs', lambda t: [])
+    monkeypatch.setattr(pipeline, 'run_task', lambda t, **kw: (completed.append(t.name) is None, 0))
+    monkeypatch.setattr(results, 'get', lambda n: {'gate': 'PASS'})
+    monkeypatch.setattr(pipeline, 'cmd_status', lambda *a, **kw: 0)
+    args = SimpleNamespace(tasks=['child'], force=False, full=False, keep_going=True)
+    assert pipeline.cmd_run(args) == 0
+    assert completed == ['parent', 'child']
+
+
 def test_resolve_is_dependency_closed():
     assert set(pipeline.resolve(["l3"])) >= {"a1b", "l2", "l3"}
 
@@ -98,6 +115,70 @@ def test_changed_forecast_input_invalidates_calibration(tmp_path,monkeypatch):
     task=pipeline.Task('uncertainty_t','audit.py','calibration',inputs=('forecast.parquet',))
     stale,why=pipeline.is_stale(task)
     assert stale and 'input' in why
+
+
+def test_failed_execution_is_never_treated_as_a_fresh_cached_gate(monkeypatch):
+    task=pipeline.Task('test','audit.py','example',expect='SHIP')
+    monkeypatch.setattr(results,'get',lambda name:{'gate':'FAIL','finished_at_epoch':9e12,'metrics':{'exit_code':1}})
+    stale,why=pipeline.is_stale(task)
+    assert stale and 'failed' in why
+
+
+def test_windows_process_crash_cannot_masquerade_as_an_expected_negative_result(monkeypatch,capsys):
+    task=pipeline.Task('backtest','audit.py','example',expect='FAIL')
+    entry={'gate':'FAIL','finished_at_epoch':9e12,'metrics':{'exit_code':3221226091}}
+    monkeypatch.setattr(results,'get',lambda name:entry)
+    assert pipeline.is_stale(task)==(True,'previous audit process crashed')
+    monkeypatch.setattr(results,'load',lambda:{'tasks':{'backtest':entry}})
+    assert pipeline.cmd_status(None)==1
+    assert 'audit process crashed' in capsys.readouterr().out
+
+
+def test_python_exception_without_a_verdict_is_incomplete_even_if_fail_is_expected(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    path=tmp_path/'results.json'
+    load,get,record=results.load,results.get,results.record
+    monkeypatch.setattr(results,'RESULTS',path)
+    monkeypatch.setattr(results,'load',lambda p=path:load(p))
+    monkeypatch.setattr(results,'get',lambda name,p=path:get(name,p))
+    monkeypatch.setattr(results,'record',lambda name,metrics,**kw:record(name,metrics,path=path,**kw))
+    task=pipeline.Task('negative','audit.py','negative experiment',expect='FAIL')
+    results.record(task.name,{},gate='FAIL')
+    monkeypatch.setattr(pipeline.subprocess,'run',lambda *a,**kw:SimpleNamespace(returncode=1))
+    ok,_=pipeline.run_task(task)
+    entry=results.get(task.name)
+    assert not ok and not entry.get('gate')
+    assert entry['metrics']['execution_incomplete']
+    assert pipeline.is_stale(task)[0]
+
+
+def test_app_command_launches_react_without_a_model_or_network_pull(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    (tmp_path/'web/node_modules/vite').mkdir(parents=True)
+    monkeypatch.setattr(pipeline,'ROOT',tmp_path)
+    monkeypatch.setattr(pipeline.shutil,'which',lambda name:'npm.cmd')
+    calls=[]
+    def run(cmd,**kwargs):
+        calls.append((cmd,kwargs));return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(pipeline.subprocess,'run',run)
+    assert pipeline.cmd_app(SimpleNamespace(port=None,legacy=False))==0
+    cmd,kwargs=calls[0]
+    assert cmd[:3]==['npm.cmd','run','dev'] and '5173' in cmd and '--strictPort' in cmd
+    assert kwargs['cwd']==str(tmp_path/'web')
+
+
+def test_presentation_changes_do_not_refit_models_but_science_and_args_do(tmp_path,monkeypatch):
+    import os
+    pkg=tmp_path/'tyretrace';pkg.mkdir();model=pkg/'scientific.py';model.write_text('x=1')
+    ui=pkg/'web_data.py';ui.write_text('updated export')
+    os.utime(model,(1,1));os.utime(ui,(100,100))
+    monkeypatch.setattr(pipeline,'ROOT',tmp_path)
+    monkeypatch.setattr(results,'get',lambda n:{'finished_at_epoch':50,'gate':'PASS','metrics':{'args':[]}})
+    task=pipeline.Task('x','audit.py','example')
+    assert not pipeline.is_stale(task)[0]
+    assert pipeline.is_stale(pipeline.Task('x','audit.py','example',args=('--different',)))[0]
+    os.utime(model,(100,100))
+    assert pipeline.is_stale(task)==(True,'package changed')
 
 
 def test_status_cannot_call_missing_verdicts_all_as_expected(monkeypatch,capsys):

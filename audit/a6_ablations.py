@@ -20,8 +20,9 @@ Two families, each measured where it actually operates:
       traffic-aware anchor   anchor laps de-trafficked, expected traffic added
       recalibration          rolling empirical recalibration of the intervals
 
-  NOT BUILT            telemetry channel, regime switching, censoring model --
-                       listed, not silently omitted.
+  SEPARATE CANDIDATE   regime switching is evaluated in rolling_models; it is
+                       not part of this original reference pipeline.
+  NOT BUILT            telemetry channel and censoring model.
 
 A component EARNS its place if removing it makes CRPS worse. The table is the
 deliverable; there is no single gate, but every component that fails to earn
@@ -106,7 +107,10 @@ def main() -> int:
                      "status": ("helps: adopt" if change < -0.5 else
                                 "no measurable effect" if change < 0.5 else
                                 "hurts CRPS: do not adopt")})
-    for comp in ("telemetry channel", "regime switching", "censoring model"):
+    rows.append({"family": "separate candidate", "component": "regime switching", "crps": None,
+                 "change_pct": None, "cov90": None,
+                 "status": "built; evaluated in rolling_models, outside this reference"})
+    for comp in ("telemetry channel", "censoring model"):
         rows.append({"family": "not built", "component": comp, "crps": None,
                      "change_pct": None, "cov90": None, "status": "not built"})
 

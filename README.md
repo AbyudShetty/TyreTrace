@@ -1,10 +1,10 @@
 # Tyre Trace
 
-Causal tyre-degradation intelligence — recovering true wear rates from confounded
-practice data.
+Tyre-degradation research — separating wear, fuel assumptions and forecast
+uncertainty in confounded lap-time data.
 
-**Status: research prototype with a data lake, model audits, rolling backtests,
-run planner and initial dashboards.** Predictive lap-time uncertainty has a
+**Status: research workbench with a data lake, model audits, rolling backtests,
+run planner and nine React pages.** Predictive lap-time uncertainty has a
 rolling calibration layer. Raw Bayesian ladder calibration, latent-parameter
 validation and live game proof remain distinct questions.
 
@@ -43,7 +43,38 @@ below preserve historical findings, superseded where a dated update says so.
 Also added on 2026-10-26: [game capture/replay and independently verified packet
 layouts](docs/GAME_RIG.md), [conditional one-stop decision diagnostics](docs/STRATEGY_EVALUATION.md),
 and [verification of the published tyre-curve baseline](docs/PUBLISHED_BASELINE.md).
-Live game proof and the full rolling ML/published comparisons remain pending.
+Live game proof remains pending. The rolling ML/published comparisons,
+quadratic conventional baseline, robust practice and regime candidates are now
+implemented. See the latest [results](docs/RESULTS.md), [demo](docs/DEMO.md) and
+[manual checklist](docs/TOMORROW.md) for the current evidence and remaining work.
+
+The original 84-weekend lake is preserved. An isolated Austin 2026 holdout was
+downloaded only after freezing predictor/protocol/input hashes; its separate
+scores are reported without retuning. This is one unseen offline weekend,
+rather than a forecast issued before the event.
+
+**Latest boundary check (2026-10-27):** removing whole-stint pace selection
+reduces identified 90% coverage to 81.4% on 11,947 scored 2026 laps; none of
+the five methods clears the coverage band on that population. The original
+filtered-population SHIP does not establish operational calibration. The frozen
+Austin ML candidate is HOLD (CRPS 0.77160, coverage 99.1%); its result is
+preserved without retuning. See `docs/RESULTS.md` for the separate populations.
+
+### Open the completed dashboard
+
+```powershell
+cd web
+npm run dev -- --host 127.0.0.1
+```
+
+Open `http://127.0.0.1:5173` or `/demo.html` for the timed guided tour.
+From the repository root, `python -m tyretrace app` launches the same React UI.
+The prepared 3:55 video is `out/demo/TyreTrace-demo.mp4` (synthetic narration;
+review before submission). Encoding and source-frame reports are beside it.
+The rejected older Streamlit interface requires the explicit `app --legacy` flag.
+The dashboard reads committed static JSON; it does not fit models or fetch
+new race data when a page opens. To refresh the saved snapshots deliberately,
+run `python -m tyretrace export` from the repository root.
 
 ---
 
@@ -87,7 +118,7 @@ tyretrace/
   app/           Streamlit dashboard — reads out/, never fits a model
   planner/       eig.py — FP2 run planner, exact expected information gain
   backtest/      fp_race.py — Tier 3: forecast each race from its practice
-  infer/                                         (empty — later phases)
+  infer/         uncertainty.py — rolling marginal predictive calibration
 audit/           Phase 0 scripts. Each prints a PASS/FAIL gate.
 eval/protocol.md pre-registered metrics, splits, baselines. Frozen.
 tests/           recovery tests — simulate, fit, assert truth comes back

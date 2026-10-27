@@ -189,3 +189,68 @@ first five eligible green race laps as pace anchors. It conditions on the
 observed tyre strategy for evaluation; it is not an FP2-only pre-race strategy
 forecast. A separately reported early-race-to-late-race diagnostic likewise
 cannot be presented as Tier 3. No change to the original metrics or ship band.
+
+### 2026-10-27 — completion candidates and baseline extension
+
+Implement and evaluate robust within-run practice slopes and a constrained
+left-to-right pace-regime HMM (warm-up/steady/slowdown). State labels describe
+latent pace regimes, not verified physical tyre states. Select two versus three
+states by held-out sequence likelihood on practice only. Target practice is
+available, target race outcomes are not available for estimation except the
+five declared anchor laps. Model-selection settings are development choices;
+all lake scores are retrospective because previous work inspected these years.
+
+Extend rolling comparisons to include a gradient-boosting residual predictor
+and a source-form logarithmic tyre-curve baseline. Both receive the same
+available history, practice, qualifying, anchor laps and conditioned race tyre
+strategy as existing methods. Predictive spread must be learned before the
+target race; no target outcome may tune hyperparameters or intervals. Report
+the exact implementation scope instead of claiming a full published simulator.
+
+Nomination lookups require dated primary sources and are keyed by year and
+event. Unverified nominations remain explicitly unresolved; never silently
+reuse the old C3 placeholder as an observed physical compound. Construction
+identifiers across seasons are not assumed exchangeable.
+
+Original metrics, temporal causality, CRPS/coverage gate and negative results
+remain unchanged. Candidate implementation is complete even if its gate is
+HOLD; it does not become the selected predictor merely by being more complex.
+## Amendment — 2026-10-27: retrospective selection and conventional curvature
+
+The rolling comparison now includes a conventional quadratic tyre-age curve
+with fuel sensitivity fixed at 0.030 s/kg. Unknown practice run levels are
+centred out; the common weak slope prior and noise use earlier weekends. This
+is reported separately from the original linear conventional forecast, whose
+results are preserved. Source-form published curves remain fitted lap models,
+not the entire cited race simulator.
+
+Review also found that the existing long-run eligibility filter trims and
+accepts whole stints using their observed lap-time distribution. That affects
+which opening laps can serve as anchors and which laps are scored. The current
+experiments therefore measure retrospective conditional prediction on this
+eligible population. They do not establish a fully prospective, online causal
+selection procedure. Current known tyre strategy/distance and qualifying/five
+race-anchor inputs must remain explicit. A strict online eligibility study
+needs a separately frozen filter and fresh observations; past scores cannot be
+renamed as that study. Method selection uses 2025, while the already inspected
+2026 check is retrospective and cannot be called untouched confirmation.
+
+The flag-only implementation is now included as `online_eligibility`: retain
+valid green non-pit laps after lap one without whole-stint pace/variance/length
+selection. Practice is fully observed before the forecast, so its run filtering
+is unchanged. Its separately calibrated ML/identified/quadratic comparison is
+an expanded-population sensitivity on inspected data, not fresh confirmation.
+
+## Amendment — 2026-10-27: isolated unseen Austin holdout
+
+OpenF1 metadata lists the completed 2026 Austin weekend outside the original
+84-weekend lake. Before downloading its lap timing, freeze predictor/scoring
+source hashes, original lake hashes, target identity, the 2025-selected ML
+method, 70 kg primary 2026 fuel assumption and flag-only eligibility. Keep this
+new data separate from the original lake. Compare identified, naive, quadratic
+conventional, ML and source-form published forecasts on identical laps; fit
+each Student-t calibrator only on its original earlier flag-only forecasts.
+The ML claim passes this holdout only if its CRPS beats every comparator and
+its marginal 90% coverage is within [0.85,0.95]. Report all scores regardless.
+This is one unseen offline weekend, not a forecast issued before the event or
+statistically sufficient prospective replication. Do not retune on this result.

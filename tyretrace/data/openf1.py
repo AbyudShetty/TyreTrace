@@ -40,6 +40,7 @@ import numpy as np
 import polars as pl
 
 from tyretrace import schema
+from tyretrace.data.compounds import nominations, resolve
 
 API = "https://api.openf1.org/v1"
 ROOT = Path(__file__).resolve().parents[2]
@@ -283,6 +284,7 @@ def load_session(meta: dict) -> pl.DataFrame:
     if not rows:
         return schema.empty()
 
+    registry = nominations()
     df = pl.DataFrame(rows).with_columns(pl.col("_start").fill_nan(None))
     t0 = df["_start"].min()
     df = df.with_columns(
@@ -291,7 +293,9 @@ def load_session(meta: dict) -> pl.DataFrame:
         pl.lit(meta["round"]).cast(pl.Int8).alias("round"),
         pl.lit(meta["location"]).alias("circuit"),
         pl.lit(meta["code"]).alias("session_type"),
-        pl.lit("C3").alias("compound_abs"),            # placeholder, as FastF1 path
+        pl.col("compound_rel").replace_strict(
+            {c: resolve(meta['year'],meta['location'],c,registry) for c in _REL},
+            default=None,return_dtype=pl.Utf8).alias("compound_abs"),
         (pl.col("_start") - t0).alias("session_clock_s"),
         pl.lit(np.nan).alias("fuel_load_kg_est"), pl.lit(np.nan).alias("fuel_load_kg_sd"),
         pl.lit(np.nan).alias("gap_ahead_s"), pl.lit(np.nan).alias("lift_coast_m"),

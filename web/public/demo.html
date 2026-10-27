@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tyre Trace · guided demo</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b0c0e;color:#f3f3f1;font:14px/1.5 system-ui,sans-serif}header{padding:12px 20px;display:flex;gap:20px;align-items:center;border-bottom:1px solid #35373b}h1{font-size:16px;margin:0;white-space:nowrap}#caption{flex:1;margin:0;color:#d3d2cc}button,a{border:1px solid #55585e;background:#1b1d21;color:#f3f3f1;border-radius:5px;padding:7px 12px;font:inherit;text-decoration:none;cursor:pointer}button:focus-visible,a:focus-visible{outline:2px solid #8cbcf5;outline-offset:3px}iframe{display:block;width:100%;height:calc(100vh - 105px);border:0}footer{height:40px;padding:8px 20px;display:flex;justify-content:space-between;color:#b9b8b0;font-size:12px}@media(max-width:750px){header{flex-wrap:wrap;gap:8px}#caption{flex-basis:100%;order:3}iframe{height:calc(100vh - 170px)}footer{height:auto;gap:10px}}
+</style>
+<header><h1>Tyre Trace · demo</h1><p id="caption" aria-live="polite"></p><button id="prev" aria-label="Previous scene">←</button><button id="play">Pause</button><button id="next" aria-label="Next scene">→</button><a href="./" target="_blank" rel="noopener">Dashboard ↗</a></header>
+<iframe title="Tyre Trace research dashboard" id="dashboard"></iframe><footer><span id="counter"></span><span>Space: pause · Arrow keys: change scene · F11: full screen</span></footer>
+<script>
+const scenes=[
+ ['overview',22,'A research workbench for tyre wear, forecast uncertainty and the next practice run.'],
+ ['problem',23,'Within a stint, fuel burn and tyre wear share the same clock. Pit stops and qualifying supply separate information.'],
+ ['races',20,'Explore 84 cached race weekends, source-backed tyre nominations and timing-derived traffic.'],
+ ['track',20,'Qualifying estimates track evolution. Each physical compound nomination has a dated source.'],
+ ['ladder',30,'Complexity must improve CRPS and retain coverage. Failed candidates and convergence diagnostics remain visible.'],
+ ['predictions',27,'Intervals describe marginal lap times. Forecasts use earlier weekends, practice, qualifying and five race anchors.'],
+ ['backtest',28,'Compare all four baseline families. Strong ML results challenge the scientific approach rather than being hidden.'],
+ ['planner',25,'Design a practice programme for information, subject to your time, tyres and operational constraints.'],
+ ['rig',25,'The raw UDP capture and replay workflow is ready. Actual live game proof remains a separate experiment.'],
+ ['overview',15,'The software and evidence are inspectable. Live telemetry, prospective replication and submission review remain human steps.'],
+];let position=0,playing=true,timer;
+const frame=document.getElementById('dashboard'),caption=document.getElementById('caption'),counter=document.getElementById('counter'),play=document.getElementById('play');
+function schedule(){clearTimeout(timer);if(playing)timer=setTimeout(()=>{if(position===scenes.length-1){playing=false;play.textContent='Play';return;}position++;render();},scenes[position][1]*1000);}
+function render(){const [route,seconds,text]=scenes[position];frame.src=`./?theme=dark#/${route}`;caption.textContent=text;counter.textContent=`Scene ${position+1} / ${scenes.length} · ${seconds} seconds`;schedule();}
+function move(n){position=(position+n+scenes.length)%scenes.length;render();}
+function toggle(){playing=!playing;play.textContent=playing?'Pause':'Play';schedule();}
+document.getElementById('prev').onclick=()=>move(-1);document.getElementById('next').onclick=()=>move(1);play.onclick=toggle;
+window.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();toggle();}if(e.key==='ArrowLeft')move(-1);if(e.key==='ArrowRight')move(1);});render();
+</script></html>

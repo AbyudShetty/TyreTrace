@@ -1,7 +1,8 @@
 /*
  * Design tokens. Dark is the default; light is its own set of steps, not an
  * automatic inversion. Categorical series are the dataviz skill's validated
- * palette (worst adjacent CVD dE 8.4 dark / 9.1 light on these surfaces).
+ * palette, screened by audit/web_palette.py for contrast and adjacent CVD
+ * separation. Light-theme series and muted labels were darkened after review.
  * Compound colours follow Pirelli and are ALWAYS paired with their letter
  * (S / M / H) -- the white hard tyre cannot carry identity by hue alone.
  */
@@ -19,7 +20,7 @@
 
   --ink: #f3f3f1;
   --ink-2: #b9b8b0;
-  --ink-3: #7f7e78;
+  --ink-3: #96958f;
 
   --accent: #3987e5;
   --accent-soft: rgba(57, 135, 229, 0.14);
@@ -70,17 +71,17 @@
 
   --ink: #0b0b0b;
   --ink-2: #52514e;
-  --ink-3: #898781;
+  --ink-3: #686660;
 
   --accent: #2a78d6;
   --accent-soft: rgba(42, 120, 214, 0.1);
   --accent-ink: #1c5cab;
 
   --s1: #2a78d6;
-  --s2: #eb6834;
-  --s3: #1baf7a;
-  --s4: #eda100;
-  --s5: #e87ba4;
+  --s2: #b94718;
+  --s3: #147c57;
+  --s4: #9c6900;
+  --s5: #b23b6c;
   --s6: #008300;
   --s7: #4a3aa7;
   --s8: #e34948;

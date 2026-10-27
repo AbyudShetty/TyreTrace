@@ -17,6 +17,7 @@ import numpy as np
 import polars as pl
 
 from tyretrace import schema
+from tyretrace.data.compounds import nominations, resolve
 
 CACHE = Path(__file__).resolve().parents[2] / "cache" / "fastf1"
 
@@ -82,6 +83,7 @@ def load_session(year: int, rnd: int, session: str) -> pl.DataFrame:
     except Exception:                                 # noqa: BLE001
         circuit = "?"
 
+    registry = nominations()
     df = pl.DataFrame({
         "session_uid": [uid] * len(laps),
         "year": np.full(len(laps), year, dtype=np.int16),
@@ -96,7 +98,7 @@ def load_session(year: int, rnd: int, session: str) -> pl.DataFrame:
         "session_clock_s": clock,
         "tyre_age": np.where(np.isfinite(tyre_life), tyre_life, 0),
         "compound_rel": comp_rel,
-        "compound_abs": ["C3"] * len(laps),   # placeholder: needs Pirelli map
+        "compound_abs": [resolve(year,str(circuit),c,registry) for c in comp_rel],
         "is_fresh": laps["FreshTyre"].fillna(False).astype(bool).to_numpy(),
         "lap_time_s": lap_time,
         "sector_1_s": _td_seconds(laps["Sector1Time"]),

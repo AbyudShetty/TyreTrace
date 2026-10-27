@@ -1,5 +1,21 @@
 # Predictive uncertainty repair
 
+## Boundary check — 2026-10-27
+
+The original SHIP below applies to retrospectively pace-filtered stints. A
+separate flag-only race population, with earlier-weekend calibration refitted
+for that population, scores 11,947 laps in 2026: identified CRPS 2.85961 and
+90% coverage 81.4%. All five comparator methods miss the coverage band. This
+does not establish reliable forecasting without retrospective pace selection.
+The populations and their opening anchors differ, so their pooled CRPS values
+are not paired observations.
+
+An isolated Austin weekend was frozen before timing access and scored without
+retuning. The preselected ML method is HOLD (CRPS 0.77160, 90% coverage 99.1%).
+Identified coverage there is 91.0%, but one offline weekend does not repair the
+broader failed sensitivity check. See [the full results](RESULTS.md). Operational
+calibration and latent/joint uncertainty remain open scientific questions.
+
 ## Frozen algorithm — 2026-10-26, before the new 2026 confirmation
 
 The baseline is the identified method with traffic-aware anchors. Preserve its

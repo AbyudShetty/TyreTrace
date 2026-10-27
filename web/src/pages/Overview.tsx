@@ -74,18 +74,20 @@ export default function Overview() {
 
   return (
     <div className="page">
-      <PageHead eyebrow="TrackShift 2026 · Tyre degradation intelligence" title="Recovering true tyre wear from confounded lap times">
-        Inside a stint, fuel burns off and tyres wear out <strong>in lock step</strong>, so a lap-time slope only
-        ever shows their sum. Every published model splits it by importing a fuel coefficient nobody verifies.
-        Tyre Trace treats it as an identification problem: find the data that actually separates the two, and say
-        how sure it is.
-      </PageHead>
+      <div className="overview-intro"><PageHead eyebrow="TrackShift 2026 · Race intelligence" title="Understand the wear. Plan the next run.">
+        Explore race evidence, inspect forecast uncertainty and plan practice that reduces it.
+        Follow the measurements behind every tyre call, including the findings that failed to replicate.
+      </PageHead><svg className="hero-track" viewBox="0 0 250 170" aria-hidden>
+        <path d="M35 125 20 93 57 51 111 63 144 25 211 31 229 63 197 89 215 126 173 146 124 121 83 143Z" fill="none" stroke="var(--surface-3)" strokeWidth="17" strokeLinejoin="round" />
+        <path d="M35 125 20 93 57 51 111 63 144 25 211 31 229 63 197 89 215 126 173 146 124 121 83 143Z" fill="none" stroke="var(--accent)" strokeWidth="2" strokeDasharray="70 460" strokeLinecap="round" />
+        <circle cx="35" cy="125" r="5" fill="var(--accent)" /><text x="26" y="163" fill="var(--ink-3)" fontSize="8" letterSpacing="2">EVIDENCE → DECISION</text>
+      </svg></div>
 
       <div className="grid g4">
         <Stat label="Track evolution" value={signed(h.tau.median, 4)} unit="s / min"
               foot={`Negative in ${pct(h.tau.frac_negative)} of ${h.tau.n} qualifying sessions · z ≈ ${fx(h.tau.z, 1)}`} />
-        <Stat label="Fuel effect, identified" value={fx(h.fuel_pace.mean, 4)} unit="s / lap"
-              foot={<>90%: {fx(h.fuel_pace.q05, 3)}–{fx(h.fuel_pace.q95, 3)} · physics says {h.fuel_pace.physics[0]}–{h.fuel_pace.physics[1]} <span style={{ color: "var(--ink-2)" }}>(open question)</span></>} />
+        <Stat label="Fuel effect · original model" value={fx(h.fuel_pace.mean, 4)} unit="s / lap"
+              foot={<>90%: {fx(h.fuel_pace.q05, 3)}–{fx(h.fuel_pace.q95, 3)} · ten-weekend estimate; the lake refines the fuel/track split</>} />
         <Stat label="Race vs qualifying evolution" value={fx(h.tau_scale.mean, 2)} unit="×"
               foot={`P(less than qualifying) = ${pct(h.tau_scale.p_lt_1, 1)}`} />
         <Stat label="Dirty air, full wake" value={fx(h.wake, 2)} unit="s / lap"

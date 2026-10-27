@@ -1,4 +1,53 @@
-# Build plan — remainder
+# Build plan — current status
+
+## Autonomous completion — 2026-10-27
+
+The original implementation backlog has been built. All 26 offline audits are
+current; 203 Python tests, 17 web tests and 36 browser views pass. The saved gates in `RESULTS.md` and
+`out/results.json` determine scientific outcomes. A rejected candidate remains
+a completed experiment, not an adopted improvement.
+
+| Area | Current implementation |
+|---|---|
+| Predictive uncertainty | Earlier-weekend Student-t calibration; both fuel assumptions; negative Gaussian result preserved |
+| Practice degradation | Robust within-run slopes and random-effects pooling, with rolling evaluation |
+| Regime model | Two/three-state constrained HMM, held-out practice selection, diagnostics and rolling candidate |
+| Compound mapping | Dated primary sources for all 84 lake weekends, null for unresolved data, season-specific pooling keys |
+| Baselines | Naive, linear/quadratic conventional, ML and source-form published rolling comparisons |
+| Eligibility | Original whole-stint filter retained; separate flag-only sensitivity and explicit conditional-input limits |
+| New holdout | Austin isolated from the lake, hashes frozen before timing access, experiment scored; preselected ML criterion HOLD |
+| Game validation | Independent packet fixtures, live self-check, immutable raw capture, replay and reference comparison |
+| Product | Nine React pages, saved-data exports, filters, CSV/table alternatives, desktop/mobile and light/dark design |
+| Delivery | Results write-up, timed tour, verified 3:55 narrated MP4 and manual-session checklist |
+
+### Human operations
+
+1. Launch the game, pass its actual UDP self-check and collect controlled live
+   data with a pit stop. Then inspect recovery and execute matched planner runs.
+2. Review the product and demonstration, and supply competition-specific
+   submission details. Synthetic narration can be replaced with your own voice.
+3. Perform Git commit/push and separately back up the ignored research assets.
+
+Follow [TOMORROW.md](TOMORROW.md). The assistant can analyse the captured data and
+make any subsequent fixes; software work is not assigned back to the user.
+
+### Evidence requiring additional observations
+
+Prospective replication, latent tyre/fuel interval validation and hidden game
+wear recovery remain scientific questions. One unseen offline Austin weekend
+does not provide enough independent races to settle them. The current data
+source cannot supply the original 2018–2022 tyre-history target. Per-corner
+telemetry remains deliberately outside scope. Preserve unsuccessful findings.
+
+The original filtered-population uncertainty SHIP does not transport to the
+flag-only 2026 population (81.4% identified coverage). The broader operational
+calibration problem remains open; neither the completed build nor a new label
+turns that negative result into validated forecasting.
+
+## Historical planning record
+
+The estimates and status below describe the 2026-10-21 plan and are superseded
+by the current implementation table above.
 
 Where the project stands against the four-phase plan in the idea submission, and
 the order the rest gets built in. Estimates are person-days; double them for

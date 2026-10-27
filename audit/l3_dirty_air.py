@@ -109,11 +109,12 @@ def main() -> int:
     print(f"   test  {d_te.n} laps (last 30%)")
     print()
 
-    fits, scores = {}, {}
+    fits, scores, diagnostics = {}, {}, {}
     for rung in ("L2", "L3"):
         t0 = time.time()
         mcmc = ladder.fit(rung, d_tr, draws=draws, warmup=draws, chains=2)
         diag = ladder.diagnostics(mcmc)
+        diagnostics[rung] = {k:v for k,v in diag.items() if k!='summary'}
         pp = ladder.predict(rung, mcmc, d_te)
         scores[rung] = metrics.score(pp, d_te.y)
         fits[rung] = mcmc
@@ -138,7 +139,7 @@ def main() -> int:
         if rung == "L2":
             base = r
         else:
-            shipped = ok
+            shipped = ok and all(x['divergences']==0 and x['max_rhat']<=1.05 for x in diagnostics.values())
     print()
 
     w = np.asarray(fits["L3"].get_samples()["wake_s"])
@@ -182,9 +183,11 @@ def main() -> int:
         "cov90_l3": scores["L3"]["coverage_90"],
         "fuel_pace_l2": f2, "fuel_pace_l3": f3,
         "prediction_held": bool(away),
+        "diagnostics": diagnostics,
+        "converged": all(x['divergences']==0 and x['max_rhat']<=1.05 for x in diagnostics.values()),
     }, gate="SHIP" if shipped else "HOLD")
 
-    ok = ladder.diagnostics(fits["L3"])["divergences"] == 0
+    ok = all(x['divergences']==0 and x['max_rhat']<=1.05 for x in diagnostics.values())
     print("=" * 76)
     print(f"L3 GATE: {'PASS' if (ok and shipped) else 'HOLD'}"
           f"   (converged: {ok}, ships: {shipped})")

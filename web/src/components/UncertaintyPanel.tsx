@@ -12,7 +12,7 @@ export function UncertaintyPanel({ data }: { data?: UncertaintySummary | null })
       ? [{ label: "110 kg assumption", comparison: data.fuel_sensitivity_110 }] : []),
   ];
   return (
-    <Card title="Predictive intervals, checked across race weekends"
+    <Card title="Predictive intervals · original filtered population"
       sub={`2026 · ${result.paired_weekends.n} weekends · ${int(result.all.calibrated.n)} scored laps · rolling history`}
       right={<GateBadge gate={data.gate} />}>
       <p className="note" style={{ marginBottom: 16 }}>
@@ -54,6 +54,12 @@ export function UncertaintyPanel({ data }: { data?: UncertaintySummary | null })
         interval includes zero. The 95% intervals remain conservative. These are marginal lap-time
         intervals; fuel and tyre-parameter intervals need separate validation.
       </p>
+      {data.eligibility_check && <div className="callout" style={{marginTop:14}}>
+        <GateBadge gate={data.eligibility_check.coverage_90>=.85&&data.eligibility_check.coverage_90<=.95?'PASS':'HOLD'} />
+        <span>The flag-only population covers {pct(data.eligibility_check.coverage_90,1)} of {int(data.eligibility_check.n)} scored laps.
+          The original whole-stint pace filter can select opening anchors retrospectively. Its SHIP does not establish
+          reliable forecasting with flag-only selection. <a href="#/ladder">Inspect the sensitivity results ↗</a></span>
+      </div>}
     </Card>
   );
 }
